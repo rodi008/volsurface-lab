@@ -26,6 +26,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      public: ${{ steps.visibility.outputs.public }}
     steps:
       - uses: actions/checkout@v4
 
@@ -63,12 +65,26 @@ jobs:
             git push
           fi
 
-      - uses: actions/upload-pages-artifact@v3
+      # Pages serves only public repositories on a free plan. While this one is
+      # private a deploy would fail every day, so it is skipped instead: the
+      # history keeps growing without a daily failure mail, and deploys resume
+      # once the repository is public again. Scheduled runs carry no repository
+      # payload, so visibility is read from the API rather than the event.
+      - name: Check visibility
+        id: visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "public=$(gh api "repos/${{ github.repository }}" --jq '.private | not')" >> "$GITHUB_OUTPUT"
+
+      - if: steps.visibility.outputs.public == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
     needs: build
+    if: needs.build.outputs.public == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
