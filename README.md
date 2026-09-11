@@ -154,6 +154,13 @@ Each run starts at 08:40 UTC, after Deribit's 08:00 UTC settlement:
 A push to `main` runs the same job, so a template change goes live with fresh
 data at once. The Actions tab has a "Run workflow" button for a manual run.
 
+**Private for a while.** On a free plan Pages serves only public repositories.
+While the repository is private the workflow still runs and records history,
+but skips the deploy, and the site returns 404. GitHub drops the Pages setting
+when a repository goes private, so going public again takes two steps: switch
+the visibility back, then re-enable Pages with GitHub Actions as the source
+(Settings → Pages). The next run redeploys.
+
 What keeps an unattended run from publishing something wrong:
 
 - The health gate blocks deployment whenever the page's own claims would be

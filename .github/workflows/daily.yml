@@ -66,10 +66,12 @@ jobs:
           fi
 
       # Pages serves only public repositories on a free plan. While this one is
-      # private a deploy would fail every day, so it is skipped instead: the
-      # history keeps growing without a daily failure mail, and deploys resume
-      # once the repository is public again. Scheduled runs carry no repository
-      # payload, so visibility is read from the API rather than the event.
+      # private a deploy would fail every day, so it is skipped instead and the
+      # history keeps growing without a daily failure mail. GitHub drops the
+      # Pages setting when a repository goes private, so going public again
+      # also means re-enabling Pages (source: GitHub Actions); until then the
+      # deploy fails loudly, which is the reminder. Scheduled runs carry no
+      # repository payload, so visibility is read from the API.
       - name: Check visibility
         id: visibility
         env:
