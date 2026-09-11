@@ -50,7 +50,10 @@ export function healthCheck(snap) {
   // A convention change moves the median. A few deep-ITM marks stamped a
   // moment apart from their forward do not, and they only earn a note.
   const f2 = x => (Number.isFinite(x) ? x.toFixed(2) : String(x));
-  if (!(v.ticksMedian < 0.5 && v.ticksP99 < 2)) {
+  // The p99 band is wide on purpose: the first cloud run measured p99 at 1.03
+  // ticks against 0.15 locally, from mark/forward timing alone. A genuine
+  // break misprices by hundreds of ticks and clears 5 with room to spare.
+  if (!(v.ticksMedian < 0.5 && v.ticksP99 < 5)) {
     hard.push(`Black-76 no longer reproduces exchange marks (median ${f2(v.ticksMedian)}, p99 ${f2(v.ticksP99)} ticks)`);
   } else if (v.maxTicks >= 2) {
     soft.push(`${v.ticksOver2} contract(s) off the exchange mark by more than 2 ticks, worst ${f2(v.maxTicks)} on ${v.maxTicksName}`);
