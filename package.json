@@ -1,0 +1,20 @@
+{
+  "name": "volsurface-lab",
+  "version": "1.0.0",
+  "description": "BTC options implied volatility surface, VRP, skew and risk-neutral density analytics on Deribit data",
+  "type": "module",
+  "bin": { "vslab": "./bin/lab.js" },
+  "scripts": {
+    "surface": "node bin/lab.js surface",
+    "vrp": "node bin/lab.js vrp",
+    "skew": "node bin/lab.js skew",
+    "rnd": "node bin/lab.js rnd",
+    "all": "node bin/lab.js all",
+    "validate": "node bin/lab.js validate",
+    "update": "node bin/lab.js update",
+    "site": "node bin/site.js",
+    "test": "node test/analytic.test.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

@@ -1,0 +1,6 @@
+# Everything under out/ is regenerated on each run, except the daily history,
+# which is the state the percentiles and day-over-day deltas are built from.
+out/*
+!out/history.jsonl
+site/
+node_modules/

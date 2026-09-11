@@ -1,0 +1,1365 @@
+<title>Vol Surface Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+/* ---------------------------------------------------------------------------
+   Tokens. Complete light palette on bare :root; dark redefines tokens only,
+   under both the OS media query and the explicit theme stamp.
+   Neutrals are slate with a blue bias - chosen, not inherited grey.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --ground:      #eef2f6;
+  --panel:       #f7f9fb;
+  --panel-2:     #ffffff;
+  --ink:         #0d1520;
+  --ink-2:       #4a5768;
+  --ink-3:       #7b8798;
+  --rule:        #dbe3ec;
+  --rule-strong: #c2cedd;
+  --accent:      #0a7f8d;
+  --accent-mark: #0aa6b8;
+  --accent-soft: rgba(10,166,184,0.10);
+  --on-accent:   #ffffff;
+
+  --s1: #2a78d6;   /* blue    */
+  --s2: #eb6834;   /* orange  */
+  --s3: #1baf7a;   /* aqua    */
+  --s4: #eda100;   /* yellow  */
+  --put:  #e34948; /* diverging pole: downside */
+  --call: #2a78d6; /* diverging pole: upside   */
+
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --critical: #d03b3b;
+
+  --shadow: 0 1px 2px rgba(13,21,32,0.05), 0 8px 24px -16px rgba(13,21,32,0.22);
+  --measure: 66ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground:      #0a0e12;
+    --panel:       #12171d;
+    --panel-2:     #171d25;
+    --ink:         #eef4fa;
+    --ink-2:       #9aa9bb;
+    --ink-3:       #6f7d8e;
+    --rule:        #1e2731;
+    --rule-strong: #2b3742;
+    --accent:      #22c3d6;
+    --accent-mark: #22c3d6;
+    --accent-soft: rgba(34,195,214,0.12);
+    --on-accent:   #071013;
+
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --put:  #e66767;
+    --call: #3987e5;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -16px rgba(0,0,0,0.8);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground:      #0a0e12;
+  --panel:       #12171d;
+  --panel-2:     #171d25;
+  --ink:         #eef4fa;
+  --ink-2:       #9aa9bb;
+  --ink-3:       #6f7d8e;
+  --rule:        #1e2731;
+  --rule-strong: #2b3742;
+  --accent:      #22c3d6;
+  --accent-mark: #22c3d6;
+  --accent-soft: rgba(34,195,214,0.12);
+  --on-accent:   #071013;
+
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --put:  #e66767;
+  --call: #3987e5;
+
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -16px rgba(0,0,0,0.8);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* --- header ------------------------------------------------------------- */
+.masthead {
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel);
+  margin-bottom: 32px;
+}
+.masthead-in {
+  max-width: 1240px; margin: 0 auto; padding: 22px 24px 18px;
+  display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: flex-end;
+  justify-content: space-between;
+}
+h1 {
+  font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.sub {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11.5px; color: var(--ink-2); margin-top: 5px;
+  letter-spacing: 0.01em;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 500;
+  padding: 4px 9px; border-radius: 3px;
+  border: 1px solid var(--rule-strong);
+  background: var(--panel-2); color: var(--ink-2);
+  white-space: nowrap;
+}
+.chip .glyph { font-weight: 700; font-size: 11px; }
+.chip.ok   .glyph { color: var(--good); }
+.chip.warn .glyph { color: var(--warning); }
+.chip.crit .glyph { color: var(--critical); }
+.chip.neutral .glyph { color: var(--ink-3); }
+.chip.warn { border-color: var(--warning); }
+.chip.crit { border-color: var(--critical); }
+
+/* --- headline figures --------------------------------------------------- */
+/* Flex rather than an auto-fit grid: a short last row stretches to fill the
+   width instead of leaving an empty cell that shows the separator colour. */
+.tiles {
+  display: flex; flex-wrap: wrap;
+  gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); border-radius: 4px; overflow: hidden;
+  margin-bottom: 40px;
+}
+.tile {
+  flex: 1 1 176px; background: var(--panel); padding: 15px 17px 14px;
+  display: flex; flex-direction: column;
+}
+.tile .k {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.075em;
+  color: var(--ink-3); font-weight: 600;
+}
+.tile .v {
+  font-size: 27px; font-weight: 600; margin-top: 7px; letter-spacing: -0.02em;
+  line-height: 1.1;
+  /* proportional figures: tabular-nums makes display sizes look loose */
+}
+.tile .n {
+  font-size: 11.5px; color: var(--ink-2); margin-top: 5px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+.tile .d {
+  font-size: 11px; color: var(--ink-3); margin-top: 4px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.tile .d b { color: var(--ink); font-weight: 600; }
+.tile .spark { display: block; margin-top: auto; padding-top: 9px; }
+
+/* --- stages ------------------------------------------------------------- */
+section { margin-bottom: 52px; scroll-margin-top: 16px; }
+.stage-head {
+  display: flex; align-items: baseline; gap: 12px;
+  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 9px; margin-bottom: 18px;
+}
+.stage-num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  letter-spacing: 0.06em; flex: none;
+}
+.stage-head h2 {
+  font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -0.01em;
+}
+.stage-head .note {
+  font-size: 12px; color: var(--ink-3); margin-left: auto; text-align: right;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.panel {
+  background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 16px 18px 14px;
+}
+.panel + .panel { margin-top: 16px; }
+.panel-title {
+  font-size: 12px; font-weight: 600; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;
+}
+.panel-sub {
+  font-size: 12px; color: var(--ink-3); margin-bottom: 12px;
+  max-width: var(--measure);
+}
+
+/* --- analysis prose (serif: a different register from the instrument) --- */
+.analysis {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: 14.5px; line-height: 1.62; color: var(--ink-2);
+  max-width: var(--measure);
+}
+.analysis p { margin: 0 0 0.85em; }
+.analysis p:last-child { margin-bottom: 0; }
+.analysis strong { color: var(--ink); font-weight: 500; }
+.analysis-block {
+  border-left: 2px solid var(--accent-mark);
+  padding-left: 16px; margin-top: 18px;
+}
+
+/* --- tables ------------------------------------------------------------- */
+.tbl-scroll { overflow-x: auto; margin-top: 12px; }
+table {
+  border-collapse: collapse; width: 100%;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+th {
+  text-align: right; font-weight: 600; color: var(--ink-3);
+  padding: 5px 9px; border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+th:first-child, td:first-child { text-align: left; }
+td {
+  padding: 4px 9px; border-bottom: 1px solid var(--rule);
+  color: var(--ink-2); white-space: nowrap; text-align: right;
+}
+tr:last-child td { border-bottom: none; }
+td.em { color: var(--ink); font-weight: 500; }
+td.pos { color: var(--good); }
+td.neg { color: var(--critical); }
+tr.is-sel td { background: var(--accent-soft); }
+
+/* --- filter row --------------------------------------------------------- */
+.filters {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  margin-bottom: 14px;
+}
+.filters .lbl {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--ink-3); font-weight: 600; margin-right: 6px;
+}
+button.pill {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 500;
+  padding: 5px 10px; min-height: 26px;
+  border: 1px solid var(--rule-strong); border-radius: 3px;
+  background: var(--panel-2); color: var(--ink-2);
+  cursor: pointer;
+}
+button.pill:hover { border-color: var(--accent-mark); color: var(--ink); }
+button.pill[aria-pressed="true"] {
+  background: var(--accent-mark); border-color: var(--accent-mark);
+  color: var(--on-accent); font-weight: 600;
+}
+button.pill:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent-mark); outline-offset: 2px;
+}
+
+/* --- legend ------------------------------------------------------------- */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  margin: 10px 0 2px; font-size: 11.5px; color: var(--ink-2);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+.legend .item { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 13px; height: 3px; border-radius: 1.5px; flex: none; }
+.legend .swatch.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* --- chart shell -------------------------------------------------------- */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tip {
+  position: absolute; pointer-events: none; opacity: 0;
+  background: var(--panel-2); border: 1px solid var(--rule-strong);
+  border-radius: 3px; box-shadow: var(--shadow);
+  padding: 7px 10px; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--ink); white-space: nowrap; z-index: 5;
+  transition: opacity .09s ease;
+}
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.tip .r span:first-child { color: var(--ink-3); }
+.tip b { font-weight: 600; }
+
+.scale-legend {
+  display: flex; align-items: center; gap: 9px; margin-top: 10px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--ink-2);
+}
+.scale-bar { height: 9px; width: 168px; border-radius: 2px; flex: none; }
+
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.92em; background: var(--accent-soft);
+  padding: 1px 4px; border-radius: 2px; color: var(--ink);
+}
+.formula {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px; color: var(--ink-2);
+  background: var(--panel-2); border: 1px solid var(--rule);
+  border-radius: 3px; padding: 9px 12px; margin: 12px 0;
+  overflow-x: auto;
+}
+footer {
+  border-top: 1px solid var(--rule-strong); margin-top: 40px; padding-top: 18px;
+  font-size: 12px; color: var(--ink-3); line-height: 1.6;
+  max-width: var(--measure);
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="masthead">
+  <div class="masthead-in">
+    <div>
+      <h1>Vol Surface Lab</h1>
+      <div class="sub" id="snapline"></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tiles" id="tiles"></div>
+
+  <section id="s1">
+    <div class="stage-head">
+      <span class="stage-num">01</span>
+      <h2>The implied volatility surface</h2>
+      <span class="note" id="fitnote"></span>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Surface</div>
+      <div class="panel-sub">Implied volatility across log-moneyness <code>k = ln(K/F)</code> and expiry, from an SVI fit per slice. Cells outside the strike range each expiry actually quotes are dimmed: there the surface is extrapolation, not price.</div>
+      <div class="chart" id="heat"></div>
+      <div class="scale-legend" id="heat-legend"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Smile detail</div>
+      <div class="panel-sub">Exchange marks against the calibrated slice, with the fit residual below in vol points — the unit that can be compared against the bid-ask width.</div>
+      <div class="filters" id="smile-filters"></div>
+      <div class="legend" id="smile-legend"></div>
+      <div class="chart" id="smile"></div>
+      <div class="tbl-scroll" id="smile-table"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-term"></div>
+  </section>
+
+  <section id="s2">
+    <div class="stage-head">
+      <span class="stage-num">02</span>
+      <h2>Term structure</h2>
+      <span class="note">ATM vs model-free, log time axis</span>
+    </div>
+    <div class="panel">
+      <div class="panel-sub">At-the-money implied volatility against the fair variance-swap strike. The gap between them is the convexity of the smile — the part of the price that ATM vol cannot see.</div>
+      <div class="legend" id="term-legend"></div>
+      <div class="chart" id="term"></div>
+    </div>
+  </section>
+
+  <section id="s3">
+    <div class="stage-head">
+      <span class="stage-num">03</span>
+      <h2>Wing structure and skew</h2>
+      <span class="note">25-delta risk reversal &amp; butterfly</span>
+    </div>
+    <div class="panel">
+      <div class="panel-sub">RR25 is the difference between the 25-delta call and put volatilities: what the market charges for asymmetry, largely independent of the level of vol. BF25 is the average wing over the ATM: what it charges for convexity.</div>
+      <div class="legend" id="skew-legend"></div>
+      <div class="chart" id="skew"></div>
+      <div class="tbl-scroll" id="skew-table"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-skew"></div>
+  </section>
+
+  <section id="s4">
+    <div class="stage-head">
+      <span class="stage-num">04</span>
+      <h2>Variance risk premium</h2>
+      <span class="note" id="vrpnote"></span>
+    </div>
+    <div class="panel">
+      <div class="panel-title">By expiry</div>
+      <div class="panel-sub">Fair variance-swap strike against realized volatility over a matched trailing window. The bar between them is the premium; the t-column is that premium in standard errors of the realized leg alone.</div>
+      <div class="legend" id="vrp-legend"></div>
+      <div class="chart" id="vrp"></div>
+      <div class="tbl-scroll" id="vrp-table"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Ex post, through time</div>
+      <div class="panel-sub">DVOL on each date against the variance actually realized over the following 30 days. The shaded band is the premium the variance seller was paid — filled toward the seller when positive, against them when negative.</div>
+      <div class="legend" id="vrpts-legend"></div>
+      <div class="chart" id="vrpts"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-vrp"></div>
+  </section>
+
+  <section id="s5">
+    <div class="stage-head">
+      <span class="stage-num">05</span>
+      <h2>Risk-neutral density</h2>
+      <span class="note">Breeden–Litzenberger</span>
+    </div>
+    <div class="panel">
+      <div class="panel-sub">The second derivative of the call price with respect to strike is the risk-neutral density; the first derivative is the probability of finishing above a level. Both are exact identities, differentiated off the calibrated smile rather than off raw quotes.</div>
+      <div class="formula">q(K) = e<sup>rT</sup> &middot; &part;<sup>2</sup>C/&part;K<sup>2</sup> &nbsp;&nbsp;&nbsp; Q(S<sub>T</sub> &gt; X) = &minus;e<sup>rT</sup> &middot; &part;C/&part;K |<sub>K=X</sub></div>
+      <div class="legend" id="rnd-legend"></div>
+      <div class="chart" id="rnd"></div>
+      <div class="tbl-scroll" id="rnd-table"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-rnd"></div>
+  </section>
+
+  <section id="s6">
+    <div class="stage-head">
+      <span class="stage-num">06</span>
+      <h2>Calibration and arbitrage diagnostics</h2>
+      <span class="note">every claim above depends on these</span>
+    </div>
+    <div class="panel">
+      <div class="panel-sub">A density read off a slice that violates the butterfly condition is meaningless, so the checks run before the results rather than after. Durrleman's g(k) &ge; 0 is the butterfly condition; total variance non-decreasing in maturity is the calendar condition; Roger Lee's moment formula caps wing slopes at 2.</div>
+      <div class="tbl-scroll" id="diag-table"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-diag"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script id="snapshot-data" type="application/json">__SNAPSHOT__</script>
+<script>
+"use strict";
+/* The page renders at once from the snapshot embedded at build time, then
+   swaps in the newest snapshot from its database when the viewer can serve
+   one. Everything below draws from S; nothing reads the embedded block after
+   this line. */
+const EMBEDDED = JSON.parse(document.getElementById('snapshot-data').textContent);
+let S = EMBEDDED;
+let SOURCE = 'embedded';          // 'embedded' | 'live'
+let HIST = EMBEDDED.history || [];
+
+/* ------------------------------------------------------------------ utils */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const el = (n, a = {}, kids = []) => {
+  const e = document.createElementNS(SVGNS, n);
+  for (const k in a) if (a[k] != null) e.setAttribute(k, a[k]);
+  for (const c of [].concat(kids)) if (c) e.appendChild(c);
+  return e;
+};
+const txt = (s, a = {}) => {
+  const t = el('text', Object.assign({ fill: 'var(--ink-3)', 'font-size': 10.5,
+    'font-family': '"IBM Plex Mono", ui-monospace, monospace' }, a));
+  t.textContent = s;
+  return t;
+};
+const fin = Number.isFinite;
+const fmt = {
+  pct:  (x, d = 1) => fin(x) ? (x * 100).toFixed(d) + '%' : '—',
+  vp:   (x, d = 2) => fin(x) ? (x >= 0 ? '+' : '') + x.toFixed(d) : '—',
+  usd:  x => fin(x) ? '$' + Math.round(x).toLocaleString('en-US') : '—',
+  usdk: x => x >= 1000 ? '$' + Math.round(x / 1000) + 'k' : '$' + Math.round(x),
+};
+const isDark = () => {
+  const t = document.documentElement.dataset.theme;
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+// Sequential blue ramp, selected per surface: light->dark on the light ground,
+// dark->light on the dark ground. Not an automatic flip of one array.
+const RAMP_LIGHT = ['#cde2fb','#9ec5f4','#6da7ec','#3987e5','#256abf','#184f95','#0d366b'];
+const RAMP_DARK  = ['#0d366b','#184f95','#256abf','#2a78d6','#5598e7','#86b6ef','#cde2fb'];
+const ramp = t => {
+  const r = isDark() ? RAMP_DARK : RAMP_LIGHT;
+  const x = Math.max(0, Math.min(1, t)) * (r.length - 1);
+  const i = Math.min(Math.floor(x), r.length - 2), f = x - i;
+  const hex = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const a = hex(r[i]), b = hex(r[i+1]);
+  return `rgb(${a.map((v,j)=>Math.round(v+(b[j]-v)*f)).join(',')})`;
+};
+const scale = (d0, d1, r0, r1) => v => r0 + (v - d0) / (d1 - d0 || 1) * (r1 - r0);
+const logScale = (d0, d1, r0, r1) => {
+  const l0 = Math.log(d0), l1 = Math.log(d1);
+  return v => r0 + (Math.log(Math.max(v, d0 * 0.5)) - l0) / (l1 - l0 || 1) * (r1 - r0);
+};
+const nearest = (arr, days) => arr.reduce((a, b) => Math.abs(b.dte - days) < Math.abs(a.dte - days) ? b : a);
+function niceTicks(lo, hi, n = 5) {
+  const span = hi - lo || 1;
+  const raw = span / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+const DAY_TICKS = [1, 3, 8, 15, 30, 60, 120, 250];
+/* Solid hairline grid + axes, recessive. Never dashed. */
+function frame(g, x0, x1, y0, y1, yTicks, ys, fmtY, xTicks, xs, fmtX) {
+  for (const t of yTicks) {
+    const y = ys(t);
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: y, y2: y, stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.appendChild(txt(fmtY(t), { x: x0 - 8, y: y + 3.5, 'text-anchor': 'end' }));
+  }
+  for (const t of xTicks) g.appendChild(txt(fmtX(t), { x: xs(t), y: y1 + 16, 'text-anchor': 'middle' }));
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: y1, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+}
+function mkTip(host) {
+  const d = document.createElement('div');
+  d.className = 'tip';
+  host.appendChild(d);
+  return {
+    show(html, x, y) {
+      d.innerHTML = html;
+      d.style.opacity = 1;
+      const w = host.clientWidth;
+      d.style.left = Math.min(Math.max(x + 12, 4), w - d.offsetWidth - 4) + 'px';
+      d.style.top = (y + 12) + 'px';
+    },
+    hide() { d.style.opacity = 0; }
+  };
+}
+const row = (k, v) => `<div class="r"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
+function legend(host, items) {
+  host.innerHTML = items.map(i =>
+    `<span class="item"><span class="swatch${i.dot ? ' dot' : ''}" style="background:${i.color}"></span>${esc(i.label)}</span>`
+  ).join('');
+}
+function table(host, cols, rows) {
+  host.innerHTML = '<table><thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') +
+    '</tr></thead><tbody>' + rows.map(r =>
+      `<tr${r.sel ? ' class="is-sel"' : ''}>` + r.cells.map(c =>
+        c !== null && typeof c === 'object'
+          ? `<td class="${esc(c.cls || '')}">${esc(c.v)}</td>`
+          : `<td>${esc(c)}</td>`
+      ).join('') + '</tr>').join('') + '</tbody></table>';
+}
+const chip = (state, glyph, label) =>
+  `<span class="chip ${state}"><span class="glyph">${glyph}</span>${esc(label)}</span>`;
+
+/* --------------------------------------------------------------- masthead */
+function renderMasthead() {
+  const meta = S.meta;
+  document.getElementById('snapline').textContent =
+    `${meta.currency} · spot ${fmt.usd(meta.spot)} · ${meta.contracts} contracts · ` +
+    `${S.slices.length} expiries · snapshot ${meta.asOfIso.replace('T', ' ').slice(0, 16)}Z · Deribit`;
+
+  // Freshness first: on a page that refreshes daily, how old the numbers are
+  // is the first thing a reader needs, and a missed update must be visible.
+  const ageH = (Date.now() - meta.asOf) / 3.6e6;
+  const age = ageH < 1 ? `${Math.max(1, Math.round(ageH * 60))} min` :
+              ageH < 48 ? `${Math.round(ageH)} h` : `${(ageH / 24).toFixed(1)} days`;
+  // Fresh data is the normal state wherever the page is served, so only
+  // staleness earns a warning colour.
+  const fresh = ageH >= 30
+    ? chip('warn', '!', `stale · ${age} old`)
+    : chip('ok', '●', `updated ${age} ago`);
+
+  const bfBad = S.slices.filter(s => !s.butterfly.arbFree);
+  const calBad = S.calendar.filter(c => c.violations > 0);
+  const maxWing = S.slices.reduce((m, s) => Math.max(m, s.wings.left, s.wings.right), 0);
+  const medRmse = [...S.slices].map(s => s.rmseVol).sort((a, b) => a - b)[Math.floor(S.slices.length / 2)];
+  const worstMeanBp = S.densities.reduce((m, d) =>
+    Math.abs(d.summary.diagnostics.meanErrorBp) > Math.abs(m) ? d.summary.diagnostics.meanErrorBp : m, 0);
+
+  document.getElementById('chips').innerHTML = [
+    fresh,
+    chip(bfBad.length ? 'crit' : 'ok', bfBad.length ? '✕' : '✓',
+         bfBad.length ? `butterfly ${bfBad.length} fail` : 'butterfly arb-free'),
+    chip(calBad.length ? 'crit' : 'ok', calBad.length ? '✕' : '✓',
+         calBad.length ? `calendar ${calBad.length} fail` : 'calendar arb-free'),
+    chip(maxWing <= 2 ? 'ok' : 'crit', maxWing <= 2 ? '✓' : '✕', `wings ${maxWing.toFixed(2)} / 2`),
+    chip(medRmse < 1 ? 'ok' : 'warn', medRmse < 1 ? '✓' : '!', `RMSE ${medRmse.toFixed(2)} vol pts`),
+    chip(Math.abs(worstMeanBp) < 10 ? 'ok' : 'warn', Math.abs(worstMeanBp) < 10 ? '✓' : '!',
+         `martingale ${worstMeanBp.toFixed(1)} bp`),
+  ].join('');
+
+  document.getElementById('fitnote').textContent = `median slice RMSE ${medRmse.toFixed(2)} vol pts`;
+  const e = S.vrpStats && S.vrpStats.expost;
+  document.getElementById('vrpnote').textContent = e
+    ? `ex-post t = ${e.tStat.toFixed(2)} on ${e.effectiveN.toFixed(1)} independent windows` : '';
+}
+
+/* ------------------------------------------------------------ stat tiles */
+function spark(vals) {
+  // Only once there is a trend to show; three points is noise, not a line.
+  if (vals.length < 5) return '';
+  const w = 132, h = 26, lo = Math.min(...vals), hi = Math.max(...vals);
+  const x = i => 2 + i / (vals.length - 1) * (w - 6);
+  const y = v => hi === lo ? h / 2 : h - 3 - (v - lo) / (hi - lo) * (h - 6);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const L = vals.length - 1;
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${vals.length}-day history">` +
+    `<polyline points="${pts}" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-linejoin="round"/>` +
+    `<circle cx="${x(L).toFixed(1)}" cy="${y(vals[L]).toFixed(1)}" r="2.8" fill="var(--accent-mark)"/></svg>`;
+}
+
+function renderTiles() {
+  const c = S.cm || {}, hl = S.headline, meta = S.meta;
+  const today = meta.asOfIso.slice(0, 10);
+  const hist = (HIST || []).filter(r => r && typeof r.date === 'string' && r.date <= today)
+    .slice().sort((a, b) => a.date.localeCompare(b.date));
+  const prev = hist.filter(r => r.date < today).pop() || null;
+  const since = prev ? ` vs ${prev.date.slice(5)}` : '';
+  const arrow = d => d > 0 ? '▲' : d < 0 ? '▼' : '■';
+  const series = key => hist.map(r => r[key]).filter(fin).slice(-60);
+  // Deltas are neutral ink: a rising vol or a falling spot is not "bad".
+  const dVol = key => prev && fin(prev[key]) && fin(c[key])
+    ? `${arrow(c[key] - prev[key])} <b>${esc(fmt.vp((c[key] - prev[key]) * 100))}</b> vol pts${esc(since)}` : '';
+  const dPts = key => prev && fin(prev[key]) && fin(c[key])
+    ? `${arrow(c[key] - prev[key])} <b>${esc(fmt.vp(c[key] - prev[key]))}</b>${esc(since)}` : '';
+
+  const spotD = prev && fin(prev.spot)
+    ? `${arrow(meta.spot - prev.spot)} <b>${esc(fmt.vp((meta.spot / prev.spot - 1) * 100))}%</b>${esc(since)}` : '';
+  const sameHl = r => r.headline && hl && r.headline.label === hl.label && r.headline.level === hl.level;
+  const hlD = prev && sameHl(prev) && hl
+    ? `${arrow(hl.p - prev.headline.p)} <b>${esc(fmt.vp((hl.p - prev.headline.p) * 100, 1))}</b> pp${esc(since)}` : '';
+
+  const tiles = [
+    { k: 'Spot', v: fmt.usd(meta.spot),
+      n: `forward ${fmt.usd(S.slices[0].F)} at ${S.slices[0].dte.toFixed(1)}d`,
+      d: spotD, s: series('spot') },
+    { k: 'ATM implied · 30d', v: fmt.pct(c.atm30),
+      n: `model-free ${fmt.pct(c.mf30)} · DVOL ${fmt.pct(c.dvol)}`,
+      d: dVol('atm30'), s: series('atm30') },
+    { k: 'Variance premium · 30d', v: fmt.vp(c.vrp30),
+      n: `vol pts · t = ${fin(c.vrpT30) ? c.vrpT30.toFixed(1) : '—'} on the realized leg`,
+      d: dPts('vrp30'), s: series('vrp30') },
+    { k: 'RR25 · 30d', v: fmt.vp(c.rr30),
+      n: `vol pts · BF25 ${fmt.vp(c.bf30)}`,
+      d: dPts('rr30'), s: series('rr30') },
+    { k: hl ? `Q(BTC > ${fmt.usdk(hl.level)}) · ${hl.label}` : 'Headline density',
+      v: hl ? fmt.pct(hl.p, 1) : '—',
+      n: hl ? `${hl.dte.toFixed(0)} days · forward ${fmt.usd(hl.F)}` : '',
+      d: hlD, s: hist.filter(sameHl).map(r => r.headline.p).slice(-60) },
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(t =>
+    `<div class="tile"><div class="k">${esc(t.k)}</div><div class="v">${esc(t.v)}</div>` +
+    `<div class="n">${esc(t.n)}</div>${t.d ? `<div class="d">${t.d}</div>` : ''}${spark(t.s)}</div>`
+  ).join('');
+}
+
+/* ------------------------------------------------------- 01a  heatmap */
+function drawHeat() {
+  const host = document.getElementById('heat');
+  host.innerHTML = '';
+  const mesh = S.mesh, rows = mesh.rows, ks = mesh.ks;
+  const W = 1000, rowH = 30, ml = 86, mr = 112, mt = 10, mb = 48;
+  const H = mt + rows.length * rowH + mb;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Implied volatility surface heatmap across log-moneyness and expiry' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr;
+  const cw = (x1 - x0) / ks.length;
+
+  let lo = Infinity, hi = -Infinity;
+  rows.forEach(r => r.iv.forEach((v, i) => { if (r.inRange[i]) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+
+  const tip = mkTip(host);
+  rows.forEach((r, ri) => {
+    const y = mt + ri * rowH;
+    r.iv.forEach((v, i) => {
+      const inR = r.inRange[i];
+      const rect = el('rect', {
+        x: x0 + i * cw, y: y + 1, width: cw + 0.6, height: rowH - 2,
+        fill: ramp((v - lo) / (hi - lo)), opacity: inR ? 1 : 0.22,
+      });
+      rect.addEventListener('mouseenter', ev => {
+        const b = host.getBoundingClientRect();
+        tip.show(
+          row('expiry', r.label) + row('dte', r.dte.toFixed(1) + 'd') +
+          row('strike', fmt.usd(r.strikes[i])) + row('k', ks[i].toFixed(3)) +
+          row('IV', fmt.pct(v, 2)) + (inR ? '' : row('', 'extrapolated')),
+          ev.clientX - b.left, ev.clientY - b.top);
+      });
+      rect.addEventListener('mouseleave', () => tip.hide());
+      g.appendChild(rect);
+    });
+    g.appendChild(txt(r.label, { x: x0 - 10, y: y + rowH / 2 + 3.5, 'text-anchor': 'end', fill: 'var(--ink-2)' }));
+    g.appendChild(txt(r.dte.toFixed(0) + 'd', { x: x1 + 10, y: y + rowH / 2 + 3.5, fill: 'var(--ink-3)' }));
+    // Direct-label the ATM value on each row: relief for the colour scale.
+    // Ink follows the cell it sits on, not the theme — the lowest-IV row maps
+    // to the palest step of the ramp, where light ink would vanish.
+    const mid = Math.round((0 - ks[0]) / (ks[1] - ks[0]));
+    if (mid >= 0 && mid < ks.length) {
+      const t = (r.iv[mid] - lo) / (hi - lo);
+      const cellIsDark = isDark() ? t < 0.45 : t > 0.55;
+      g.appendChild(txt(fmt.pct(r.iv[mid], 0), {
+        x: x0 + mid * cw + cw / 2, y: y + rowH / 2 + 3.5, 'text-anchor': 'middle',
+        fill: cellIsDark ? '#ffffff' : '#0d1520', 'font-weight': 600, 'font-size': 9.5,
+      }));
+    }
+  });
+  const kx = scale(ks[0], ks[ks.length - 1], x0, x1);
+  for (const t of [-0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75]) {
+    if (t < ks[0] || t > ks[ks.length - 1]) continue;
+    g.appendChild(txt(t === 0 ? 'ATM' : t.toFixed(2), { x: kx(t) + cw / 2, y: H - mb + 20, 'text-anchor': 'middle' }));
+  }
+  g.appendChild(txt('log-moneyness  k = ln(K/F)', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle', fill: 'var(--ink-3)' }));
+  svg.appendChild(g);
+  host.appendChild(svg);
+
+  const stops = (isDark() ? RAMP_DARK : RAMP_LIGHT).join(',');
+  document.getElementById('heat-legend').innerHTML = `<span>${fmt.pct(lo, 0)}</span>` +
+    `<span class="scale-bar" style="background:linear-gradient(90deg,${stops})"></span>` +
+    `<span>${fmt.pct(hi, 0)}</span>` +
+    `<span style="color:var(--ink-3);margin-left:10px">implied volatility · dimmed = outside quoted strikes</span>`;
+}
+
+/* -------------------------------------------------------- 01b  smile */
+let selected = null;
+function defaultExpiry() {
+  if (S.headline && S.slices.some(s => s.label === S.headline.label)) return S.headline.label;
+  return nearest(S.slices, 100).label;
+}
+function buildSmileFilters() {
+  // Expiries roll: keep the reader's choice while it is still listed.
+  if (!selected || !S.slices.some(s => s.label === selected)) selected = defaultExpiry();
+  const ff = document.getElementById('smile-filters');
+  ff.innerHTML = '<span class="lbl">Expiry</span>';
+  for (const s of S.slices) {
+    const b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = s.label;
+    b.setAttribute('aria-pressed', String(s.label === selected));
+    b.addEventListener('click', () => {
+      selected = s.label;
+      [...ff.querySelectorAll('button')].forEach(x =>
+        x.setAttribute('aria-pressed', String(x.textContent === selected)));
+      drawSmile();
+    });
+    ff.appendChild(b);
+  }
+}
+
+function sviIvAt(p, k, T) {
+  const u = k - p.m;
+  const w = p.a + p.b * (p.rho * u + Math.sqrt(u * u + p.sig * p.sig));
+  return Math.sqrt(Math.max(w, 1e-12) / T);
+}
+
+function drawSmile() {
+  const host = document.getElementById('smile');
+  host.innerHTML = '';
+  const sl = S.slices.find(s => s.label === selected);
+  const W = 1000, ml = 64, mr = 104, mt = 14;
+  const plotH = 300, residH = 86, gapH = 30, mb = 34;
+  const H = mt + plotH + gapH + residH + mb;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': `Volatility smile for ${sl.label}` });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = mt + plotH;
+
+  const pts = sl.points;
+  const kLo = Math.min(...pts.map(p => p.k)), kHi = Math.max(...pts.map(p => p.k));
+  const padK = (kHi - kLo) * 0.04;
+  const xs = scale(kLo - padK, kHi + padK, x0, x1);
+  const ivLo = Math.min(...pts.map(p => Math.min(p.iv, p.fitIv)));
+  const ivHi = Math.max(...pts.map(p => Math.max(p.iv, p.fitIv)));
+  const padI = (ivHi - ivLo) * 0.12 || 0.02;
+  const ys = scale(ivLo - padI, ivHi + padI, y1, y0);
+  const yT = niceTicks(ivLo - padI, ivHi + padI, 5);
+  const xT = niceTicks(kLo, kHi, 6);
+  frame(g, x0, x1, y0, y1, yT, ys, t => (t * 100).toFixed(0) + '%', xT, xs, t => t.toFixed(2));
+
+  // Context: every other expiry as a recessive hairline.
+  for (const other of S.slices) {
+    if (other.label === sl.label) continue;
+    const d = [];
+    for (let i = 0; i <= 80; i++) {
+      const k = kLo - padK + (kHi - kLo + 2 * padK) * i / 80;
+      if (k < other.kLo || k > other.kHi) continue;
+      d.push(`${d.length ? 'L' : 'M'}${xs(k).toFixed(1)},${ys(sviIvAt(other.params, k, other.T)).toFixed(1)}`);
+    }
+    if (d.length > 2) g.appendChild(el('path', { d: d.join(' '), fill: 'none',
+      stroke: 'var(--rule-strong)', 'stroke-width': 1, opacity: 0.55 }));
+  }
+
+  g.appendChild(el('line', { x1: xs(0), x2: xs(0), y1: y0, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+  g.appendChild(txt('F', { x: xs(0), y: y0 - 3, 'text-anchor': 'middle', fill: 'var(--ink-3)' }));
+
+  const fd = [];
+  for (let i = 0; i <= 200; i++) {
+    const k = kLo - padK + (kHi - kLo + 2 * padK) * i / 200;
+    fd.push(`${i ? 'L' : 'M'}${xs(k).toFixed(1)},${ys(sviIvAt(sl.params, k, sl.T)).toFixed(1)}`);
+  }
+  g.appendChild(el('path', { d: fd.join(' '), fill: 'none', stroke: 'var(--accent-mark)',
+    'stroke-width': 2, 'stroke-linecap': 'round' }));
+
+  // Market marks. 2px surface ring so overlapping points stay separable.
+  const tip = mkTip(host);
+  for (const p of pts) {
+    g.appendChild(el('circle', {
+      cx: xs(p.k), cy: ys(p.iv), r: 4.5,
+      fill: p.type === 'put' ? 'var(--put)' : 'var(--call)',
+      stroke: 'var(--panel)', 'stroke-width': 2,
+    }));
+    const hit = el('circle', { cx: xs(p.k), cy: ys(p.iv), r: 13, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('strike', fmt.usd(p.K)) + row('type', p.type) + row('k', p.k.toFixed(4)) +
+        row('market IV', fmt.pct(p.iv, 2)) + row('fitted IV', fmt.pct(p.fitIv, 2)) +
+        row('residual', fmt.vp((p.fitIv - p.iv) * 100) + ' vp') +
+        row('open interest', fin(p.oi) ? p.oi.toFixed(1) : '—') + row('volume', (p.volume || 0).toFixed(1)),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  }
+  g.appendChild(txt(`SVI fit · ATM ${fmt.pct(sl.atmIv, 1)}`, {
+    x: x1 + 8, y: ys(sl.atmIv) + 3.5, fill: 'var(--accent)', 'font-weight': 600 }));
+
+  // Residual strip
+  const r0 = y1 + gapH, r1 = r0 + residH;
+  const res = pts.map(p => (p.fitIv - p.iv) * 100);
+  const rMax = Math.max(1, Math.max(...res.map(Math.abs)) * 1.15);
+  const rs = scale(-rMax, rMax, r1, r0);
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: rs(0), y2: rs(0), stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+  for (const t of [-rMax * 0.66, rMax * 0.66]) {
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: rs(t), y2: rs(t), stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.appendChild(txt(fmt.vp(t, 1), { x: x0 - 8, y: rs(t) + 3.5, 'text-anchor': 'end' }));
+  }
+  pts.forEach((p, i) => {
+    const col = p.type === 'put' ? 'var(--put)' : 'var(--call)';
+    g.appendChild(el('line', { x1: xs(p.k), x2: xs(p.k), y1: rs(0), y2: rs(res[i]),
+      stroke: col, 'stroke-width': 1.5, opacity: 0.75 }));
+    g.appendChild(el('circle', { cx: xs(p.k), cy: rs(res[i]), r: 2.6, fill: col }));
+  });
+  g.appendChild(txt('residual, vol pts', { x: x0, y: r0 - 8, fill: 'var(--ink-3)' }));
+  g.appendChild(txt(`RMSE ${sl.rmseVol.toFixed(2)}`, { x: x1 + 8, y: rs(0), fill: 'var(--ink-3)' }));
+  g.appendChild(txt(`core ${sl.coreRmseVol.toFixed(2)}`, { x: x1 + 8, y: rs(0) + 12, fill: 'var(--ink-3)' }));
+  for (const t of xT) g.appendChild(txt(t.toFixed(2), { x: xs(t), y: r1 + 16, 'text-anchor': 'middle' }));
+  g.appendChild(txt('log-moneyness  k = ln(K/F)', { x: (x0 + x1) / 2, y: H - 3, 'text-anchor': 'middle' }));
+
+  svg.appendChild(g);
+  host.appendChild(svg);
+
+  legend(document.getElementById('smile-legend'), [
+    { color: 'var(--put)',  label: 'put marks (downside)', dot: true },
+    { color: 'var(--call)', label: 'call marks (upside)',  dot: true },
+    { color: 'var(--accent-mark)', label: 'SVI fit' },
+    { color: 'var(--rule-strong)', label: 'other expiries' },
+  ]);
+
+  table(document.getElementById('smile-table'),
+    ['Expiry', 'DTE', 'Forward', 'Pts', 'ATM', 'RMSE', 'Core', 'Max', 'a', 'b', 'rho', 'm', 'sigma', 'min g'],
+    S.slices.map(s => ({
+      sel: s.label === selected,
+      cells: [
+        { v: s.label, cls: 'em' }, s.dte.toFixed(1), fmt.usd(s.F), s.nPoints,
+        fmt.pct(s.atmIv, 1), s.rmseVol.toFixed(2), s.coreRmseVol.toFixed(2), s.maxAbsVol.toFixed(2),
+        s.params.a.toFixed(5), s.params.b.toFixed(4), s.params.rho.toFixed(4),
+        s.params.m.toFixed(4), s.params.sig.toFixed(4),
+        { v: s.butterfly.minG.toExponential(1), cls: s.butterfly.arbFree ? 'pos' : 'neg' },
+      ]
+    })));
+}
+
+/* ---------------------------------------------------- 02  term structure */
+function drawTerm() {
+  const host = document.getElementById('term');
+  host.innerHTML = '';
+  const W = 1000, ml = 62, mr = 128, mt = 16, mb = 44, H = 300;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'ATM and model-free implied volatility term structure' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const d = S.vrp;
+  const dLo = d[0].dte, dHi = d[d.length - 1].dte;
+  const xs = logScale(dLo, dHi, x0, x1);
+  const lo = Math.min(...d.map(r => Math.min(r.atmIv, r.mfIv)));
+  const hi = Math.max(...d.map(r => Math.max(r.atmIv, r.mfIv)));
+  const pad = (hi - lo) * 0.18;
+  const ys = scale(lo - pad, hi + pad, y1, y0);
+  frame(g, x0, x1, y0, y1, niceTicks(lo - pad, hi + pad, 5), ys, t => (t * 100).toFixed(0) + '%',
+    DAY_TICKS.filter(t => t >= dLo && t <= dHi), xs, t => t + 'd');
+
+  const line = (key, color) => {
+    const p = d.map((r, i) => `${i ? 'L' : 'M'}${xs(r.dte).toFixed(1)},${ys(r[key]).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d: p, fill: 'none', stroke: color, 'stroke-width': 2,
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    d.forEach(r => g.appendChild(el('circle', { cx: xs(r.dte), cy: ys(r[key]), r: 4,
+      fill: color, stroke: 'var(--panel)', 'stroke-width': 2 })));
+  };
+  line('mfIv', 'var(--s2)');
+  line('atmIv', 'var(--s1)');
+  const last = d[d.length - 1];
+  g.appendChild(txt(`model-free ${fmt.pct(last.mfIv, 1)}`, { x: x1 + 8, y: ys(last.mfIv) + 3.5, fill: 'var(--s2)', 'font-weight': 600 }));
+  g.appendChild(txt(`ATM ${fmt.pct(last.atmIv, 1)}`, { x: x1 + 8, y: ys(last.atmIv) + 3.5, fill: 'var(--s1)', 'font-weight': 600 }));
+  g.appendChild(txt('days to expiry (log scale)', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }));
+
+  const tip = mkTip(host);
+  d.forEach(r => {
+    const hit = el('rect', { x: xs(r.dte) - 14, y: y0, width: 28, height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('expiry', r.label) + row('dte', r.dte.toFixed(1) + 'd') +
+        row('ATM', fmt.pct(r.atmIv, 2)) + row('model-free', fmt.pct(r.mfIv, 2)) +
+        row('convexity', fmt.vp(r.smilePremiumVolPts) + ' vp'),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  });
+  svg.appendChild(g); host.appendChild(svg);
+  legend(document.getElementById('term-legend'), [
+    { color: 'var(--s1)', label: 'ATM implied' },
+    { color: 'var(--s2)', label: 'model-free (variance swap strike)' },
+  ]);
+}
+
+/* --------------------------------------------------------------- 03  skew */
+function drawSkew() {
+  const host = document.getElementById('skew');
+  host.innerHTML = '';
+  const W = 1000, ml = 62, mr = 118, mt = 16, mb = 44, H = 300;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': '25-delta risk reversal and butterfly term structure' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const d = S.skew.filter(s => s.rr != null);
+  const dLo = d[0].dte, dHi = d[d.length - 1].dte;
+  const xs = logScale(dLo, dHi, x0, x1);
+  const vals = d.flatMap(s => [s.rr, s.bf]);
+  const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+  const pad = (hi - lo) * 0.2 || 0.5;
+  const ys = scale(lo - pad, hi + pad, y1, y0);
+  frame(g, x0, x1, y0, y1, niceTicks(lo - pad, hi + pad, 5), ys, t => fmt.vp(t, 1),
+    DAY_TICKS.filter(t => t >= dLo && t <= dHi), xs, t => t + 'd');
+  // Zero is the meaningful baseline for a diverging quantity.
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: ys(0), y2: ys(0), stroke: 'var(--rule-strong)', 'stroke-width': 1.5 }));
+  g.appendChild(txt('0 · symmetric', { x: x0 + 4, y: ys(0) - 6, fill: 'var(--ink-3)' }));
+
+  const line = (key, color) => {
+    const p = d.map((r, i) => `${i ? 'L' : 'M'}${xs(r.dte).toFixed(1)},${ys(r[key]).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d: p, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    d.forEach(r => g.appendChild(el('circle', { cx: xs(r.dte), cy: ys(r[key]), r: 4,
+      fill: color, stroke: 'var(--panel)', 'stroke-width': 2 })));
+  };
+  line('bf', 'var(--s3)');
+  line('rr', 'var(--s1)');
+  const last = d[d.length - 1];
+  g.appendChild(txt(`BF25 ${fmt.vp(last.bf)}`, { x: x1 + 8, y: ys(last.bf) + 3.5, fill: 'var(--s3)', 'font-weight': 600 }));
+  g.appendChild(txt(`RR25 ${fmt.vp(last.rr)}`, { x: x1 + 8, y: ys(last.rr) + 3.5, fill: 'var(--s1)', 'font-weight': 600 }));
+  g.appendChild(txt('days to expiry (log scale)', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }));
+
+  const tip = mkTip(host);
+  d.forEach(r => {
+    const hit = el('rect', { x: xs(r.dte) - 14, y: y0, width: 28, height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('expiry', r.label) + row('RR25', fmt.vp(r.rr) + ' vp') + row('BF25', fmt.vp(r.bf) + ' vp') +
+        row('25d put', fmt.pct(r.putIv, 2) + ' @ ' + fmt.usdk(r.putK)) +
+        row('25d call', fmt.pct(r.callIv, 2) + ' @ ' + fmt.usdk(r.callK)),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  });
+  svg.appendChild(g); host.appendChild(svg);
+  legend(document.getElementById('skew-legend'), [
+    { color: 'var(--s1)', label: 'RR25 = IV(25d call) − IV(25d put)' },
+    { color: 'var(--s3)', label: 'BF25 = mean wing − ATM' },
+  ]);
+  table(document.getElementById('skew-table'),
+    ['Expiry', 'DTE', 'ATM', '25d put', '25d call', 'RR25', 'BF25', 'Put K', 'Call K', 'dIV/dk'],
+    d.map(s => ({ cells: [
+      { v: s.label, cls: 'em' }, s.dte.toFixed(1), fmt.pct(s.atmIv, 1),
+      fmt.pct(s.putIv, 1), fmt.pct(s.callIv, 1),
+      { v: fmt.vp(s.rr), cls: s.rr < 0 ? 'neg' : 'pos' },
+      fmt.vp(s.bf), fmt.usd(s.putK), fmt.usd(s.callK), s.atmSlope.toFixed(3),
+    ]})));
+}
+
+/* ---------------------------------------------------------------- 04  VRP */
+function drawVrp() {
+  const host = document.getElementById('vrp');
+  host.innerHTML = '';
+  const d = S.vrp;
+  const W = 1000, ml = 62, mr = 120, mt = 18, mb = 46, H = 300;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Model-free implied against realized volatility by expiry' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const step = (x1 - x0) / d.length;
+  const vals = d.flatMap(r => [r.mfIv, r.rv]).filter(fin);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.16;
+  const ys = scale(lo - pad, hi + pad, y1, y0);
+  const cx = i => x0 + step * (i + 0.5);
+  for (const t of niceTicks(lo - pad, hi + pad, 5)) {
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: ys(t), y2: ys(t), stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.appendChild(txt((t * 100).toFixed(0) + '%', { x: x0 - 8, y: ys(t) + 3.5, 'text-anchor': 'end' }));
+  }
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: y1, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+
+  const tip = mkTip(host);
+  d.forEach((r, i) => {
+    if (!fin(r.rv) || !fin(r.mfIv)) return;
+    const x = cx(i);
+    // Dumbbell: the gap IS the premium, so draw the gap rather than two bars.
+    g.appendChild(el('line', { x1: x, x2: x, y1: ys(r.rv), y2: ys(r.mfIv),
+      stroke: 'var(--rule-strong)', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+    g.appendChild(el('circle', { cx: x, cy: ys(r.rv), r: 5, fill: 'var(--s2)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+    g.appendChild(el('circle', { cx: x, cy: ys(r.mfIv), r: 5, fill: 'var(--s1)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+    g.appendChild(txt(r.label.replace(/(\d+)([A-Z]{3})(\d+)/, '$1$2'), {
+      x, y: y1 + 16, 'text-anchor': 'middle', 'font-size': 9.5 }));
+    const strong = fin(r.vrpTStat) && Math.abs(r.vrpTStat) >= 2;
+    g.appendChild(txt(fmt.vp(r.vrpVolPts, 1), {
+      x, y: ys(Math.max(r.mfIv, r.rv)) - 9, 'text-anchor': 'middle',
+      fill: strong ? 'var(--ink)' : 'var(--ink-3)', 'font-weight': strong ? 600 : 400, 'font-size': 10 }));
+    const hit = el('rect', { x: x - step / 2, y: y0, width: step, height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('expiry', r.label) + row('model-free', fmt.pct(r.mfIv, 2)) +
+        row('realized ' + r.rvWindowDays + 'd', fmt.pct(r.rv, 2)) +
+        row('premium', fmt.vp(r.vrpVolPts) + ' vp') +
+        row('realized SE', '±' + r.rvSeVolPts.toFixed(2) + ' vp') +
+        row('t-stat', r.vrpTStat.toFixed(2)),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  });
+  g.appendChild(txt('premium in vol points; bold where |t| ≥ 2', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }));
+  svg.appendChild(g); host.appendChild(svg);
+  legend(document.getElementById('vrp-legend'), [
+    { color: 'var(--s1)', label: 'model-free implied', dot: true },
+    { color: 'var(--s2)', label: 'realized, matched window', dot: true },
+  ]);
+  table(document.getElementById('vrp-table'),
+    ['Expiry', 'DTE', 'ATM', 'Model-free', 'CBOE sum', 'Convexity', 'RV window', 'Realized', 'RV SE', 'Premium', 't'],
+    d.map(r => ({ cells: [
+      { v: r.label, cls: 'em' }, r.dte.toFixed(1), fmt.pct(r.atmIv, 1), fmt.pct(r.mfIv, 1),
+      fin(r.cboeIv) ? fmt.pct(r.cboeIv, 1) : '—', fmt.vp(r.smilePremiumVolPts),
+      r.rvWindowDays + 'd', fmt.pct(r.rv, 1), fin(r.rvSeVolPts) ? '±' + r.rvSeVolPts.toFixed(2) : '—',
+      { v: fmt.vp(r.vrpVolPts), cls: r.vrpVolPts > 0 ? 'pos' : 'neg' },
+      { v: fin(r.vrpTStat) ? r.vrpTStat.toFixed(1) : '—', cls: fin(r.vrpTStat) && Math.abs(r.vrpTStat) >= 2 ? 'em' : '' },
+    ]})));
+}
+
+function drawVrpTs() {
+  const host = document.getElementById('vrpts');
+  host.innerHTML = '';
+  const d = S.vrpSeries.filter(r => fin(r.rvForward) && fin(r.impliedVol));
+  if (d.length < 2) return;
+  const W = 1000, ml = 62, mr = 118, mt = 16, mb = 42, H = 300;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'DVOL against subsequently realized volatility over time' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const xs = scale(d[0].ts, d[d.length - 1].ts, x0, x1);
+  const vals = d.flatMap(r => [r.impliedVol, r.rvForward]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.1;
+  const ys = scale(lo - pad, hi + pad, y1, y0);
+  frame(g, x0, x1, y0, y1, niceTicks(lo - pad, hi + pad, 5), ys, t => (t * 100).toFixed(0) + '%', [], xs, () => '');
+
+  // Diverging fill between the two lines: the sign of the premium is the polarity.
+  let run = [], sign = null;
+  const flush = () => {
+    if (run.length < 2) { run = []; return; }
+    const up = run.map(r => `${xs(r.ts).toFixed(1)},${ys(r.impliedVol).toFixed(1)}`);
+    const dn = run.slice().reverse().map(r => `${xs(r.ts).toFixed(1)},${ys(r.rvForward).toFixed(1)}`);
+    g.appendChild(el('polygon', { points: up.concat(dn).join(' '),
+      fill: sign > 0 ? 'var(--s1)' : 'var(--put)', opacity: 0.16 }));
+    run = [];
+  };
+  for (const r of d) {
+    const s = r.impliedVol >= r.rvForward ? 1 : -1;
+    if (sign === null) sign = s;
+    if (s !== sign) { flush(); sign = s; }
+    run.push(r);
+  }
+  flush();
+
+  const path = key => d.map((r, i) => `${i ? 'L' : 'M'}${xs(r.ts).toFixed(1)},${ys(r[key]).toFixed(1)}`).join(' ');
+  g.appendChild(el('path', { d: path('rvForward'), fill: 'none', stroke: 'var(--s2)', 'stroke-width': 1.6 }));
+  g.appendChild(el('path', { d: path('impliedVol'), fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2 }));
+  const lastR = d[d.length - 1];
+  g.appendChild(txt(`DVOL ${fmt.pct(lastR.impliedVol, 0)}`, { x: x1 + 8, y: ys(lastR.impliedVol) + 3.5, fill: 'var(--s1)', 'font-weight': 600 }));
+  g.appendChild(txt(`realized ${fmt.pct(lastR.rvForward, 0)}`, { x: x1 + 8, y: ys(lastR.rvForward) + 3.5, fill: 'var(--s2)', 'font-weight': 600 }));
+
+  const months = [];
+  for (const r of d) {
+    const m = r.date.slice(0, 7);
+    if (!months.some(x => x.m === m)) months.push({ m, ts: r.ts });
+  }
+  months.filter((_, i) => i % 2 === 0).forEach(m =>
+    g.appendChild(txt(m.m, { x: xs(m.ts), y: y1 + 16, 'text-anchor': 'middle', 'font-size': 9.5 })));
+  g.appendChild(txt('DVOL on each date vs variance realized over the following 30 days', {
+    x: (x0 + x1) / 2, y: H - 4, 'text-anchor': 'middle' }));
+
+  const tip = mkTip(host);
+  const overlay = el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+  const cross = el('line', { x1: x0, x2: x0, y1: y0, y2: y1, stroke: 'var(--ink-3)', 'stroke-width': 1, opacity: 0 });
+  overlay.addEventListener('mousemove', ev => {
+    const b = host.getBoundingClientRect();
+    const px = (ev.clientX - b.left) / b.width * W;
+    let best = d[0], bd = Infinity;
+    for (const r of d) { const dd = Math.abs(xs(r.ts) - px); if (dd < bd) { bd = dd; best = r; } }
+    cross.setAttribute('x1', xs(best.ts)); cross.setAttribute('x2', xs(best.ts));
+    cross.setAttribute('opacity', 0.5);
+    tip.show(row('date', best.date) + row('DVOL', fmt.pct(best.impliedVol, 1)) +
+      row('realized fwd 30d', fmt.pct(best.rvForward, 1)) +
+      row('premium', fmt.vp(best.vrpPostVolPts) + ' vp'),
+      ev.clientX - b.left, ev.clientY - b.top);
+  });
+  overlay.addEventListener('mouseleave', () => { tip.hide(); cross.setAttribute('opacity', 0); });
+  g.appendChild(cross); g.appendChild(overlay);
+  svg.appendChild(g); host.appendChild(svg);
+  legend(document.getElementById('vrpts-legend'), [
+    { color: 'var(--s1)', label: 'DVOL (30d implied)' },
+    { color: 'var(--s2)', label: 'realized over the following 30d' },
+    { color: 'var(--s1)', label: 'premium to the seller', dot: true },
+    { color: 'var(--put)', label: 'premium against the seller', dot: true },
+  ]);
+}
+
+/* ---------------------------------------------------------------- 05  RND */
+function drawRnd() {
+  const host = document.getElementById('rnd');
+  host.innerHTML = '';
+  if (!S.densities.length) return;
+  // One expiry per tenor bucket, chosen by days rather than by name so the
+  // chart survives every expiry roll. Four is the cap for a pairwise read.
+  const picks = [];
+  for (const t of [14, 45, 100, 270]) {
+    const d = nearest(S.densities, t);
+    if (!picks.includes(d)) picks.push(d);
+  }
+  const ds = picks.slice().sort((a, b) => a.dte - b.dte).slice(0, 4);
+  const colors = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+  const hlLabel = S.headline ? S.headline.label : null;
+  const Fh = S.headline ? S.headline.F : ds[ds.length - 1].F;
+  const W = 1000, ml = 58, mr = 118, mt = 18, mb = 46, H = 320;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Option-implied risk-neutral densities by expiry' });
+  const g = el('g');
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const kLo = 0.25 * Fh, kHi = 2.8 * Fh;
+  const xs = scale(kLo, kHi, x0, x1);
+  const inR = (d, i) => d.Ks[i] >= kLo && d.Ks[i] <= kHi;
+  const yMax = Math.max(...ds.flatMap(d => d.q.filter((_, i) => inR(d, i))));
+  const ys = scale(0, yMax * 1.08, y1, y0);
+
+  for (const t of niceTicks(kLo, kHi, 5).filter(t => t > kLo && t < kHi)) {
+    g.appendChild(el('line', { x1: xs(t), x2: xs(t), y1: y0, y2: y1, stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.appendChild(txt(fmt.usdk(t), { x: xs(t), y: y1 + 16, 'text-anchor': 'middle' }));
+  }
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: y1, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+
+  ds.forEach((d, di) => {
+    const pts = d.Ks.map((K, i) => ({ K, q: d.q[i] })).filter(p => p.K >= kLo && p.K <= kHi);
+    if (pts.length < 2) return;
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(p.K).toFixed(1)},${ys(p.q).toFixed(1)}`).join(' ');
+    if (d.label === hlLabel) {
+      g.appendChild(el('path', {
+        d: line + ` L${xs(pts[pts.length - 1].K).toFixed(1)},${ys(0).toFixed(1)} L${xs(pts[0].K).toFixed(1)},${ys(0).toFixed(1)} Z`,
+        fill: colors[di], opacity: 0.10 }));
+    }
+    g.appendChild(el('path', { d: line, fill: 'none', stroke: colors[di], 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    const peak = pts.reduce((a, b) => b.q > a.q ? b : a);
+    g.appendChild(txt(`${d.label} · ${d.dte.toFixed(0)}d`, {
+      x: xs(peak.K), y: ys(peak.q) - 8, 'text-anchor': 'middle', fill: colors[di], 'font-weight': 600, 'font-size': 10 }));
+  });
+
+  g.appendChild(el('line', { x1: xs(Fh), x2: xs(Fh), y1: y0, y2: y1, stroke: 'var(--ink-3)', 'stroke-width': 1 }));
+  g.appendChild(txt('forward', { x: xs(Fh), y: y0 - 4, 'text-anchor': 'middle', fill: 'var(--ink-3)' }));
+  g.appendChild(txt('terminal price', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }));
+  g.appendChild(txt('density', { x: x0 - 8, y: y0 + 4, 'text-anchor': 'end' }));
+
+  const tip = mkTip(host);
+  const overlay = el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+  const cross = el('line', { x1: x0, x2: x0, y1: y0, y2: y1, stroke: 'var(--ink-3)', 'stroke-width': 1, opacity: 0 });
+  overlay.addEventListener('mousemove', ev => {
+    const b = host.getBoundingClientRect();
+    const K = kLo + (kHi - kLo) * ((ev.clientX - b.left) / b.width * W - x0) / (x1 - x0);
+    cross.setAttribute('x1', xs(K)); cross.setAttribute('x2', xs(K)); cross.setAttribute('opacity', 0.5);
+    const rows = ds.map(d => {
+      let j = 0; while (j < d.Ks.length - 1 && d.Ks[j] < K) j++;
+      return row(d.label, fmt.pct(d.digital[j], 1));
+    }).join('');
+    tip.show(row('above', fmt.usd(K)) + rows, ev.clientX - b.left, ev.clientY - b.top);
+  });
+  overlay.addEventListener('mouseleave', () => { tip.hide(); cross.setAttribute('opacity', 0); });
+  g.appendChild(cross); g.appendChild(overlay);
+  svg.appendChild(g); host.appendChild(svg);
+
+  legend(document.getElementById('rnd-legend'),
+    ds.map((d, i) => ({ color: colors[i], label: `${d.label} · ${d.dte.toFixed(0)}d` })));
+
+  const levels = (S.headline && S.headline.levels) || [];
+  table(document.getElementById('rnd-table'),
+    ['Expiry', 'DTE', 'Forward', ...levels.map(l => 'Q>' + fmt.usdk(l)), 'p05', 'p50', 'p95', 'Skew', 'Kurt', 'Mass', 'Mean bp'],
+    S.densities.map(d => {
+      const j = K => { let i = 0; while (i < d.Ks.length - 1 && d.Ks[i] < K) i++; return d.digital[i]; };
+      const dg = d.summary.diagnostics;
+      return { sel: d.label === hlLabel, cells: [
+        { v: d.label, cls: 'em' }, d.dte.toFixed(0), fmt.usd(d.F),
+        ...levels.map(l => fmt.pct(j(l), 1)),
+        fmt.usd(d.summary.quantiles.p05), fmt.usd(d.summary.quantiles.p50), fmt.usd(d.summary.quantiles.p95),
+        dg.skew.toFixed(2), dg.excessKurtosis.toFixed(1), dg.mass.toFixed(4),
+        { v: dg.meanErrorBp.toFixed(2), cls: Math.abs(dg.meanErrorBp) < 10 ? 'pos' : 'neg' },
+      ]};
+    }));
+}
+
+/* -------------------------------------------------------- 06  diagnostics */
+function drawDiag() {
+  table(document.getElementById('diag-table'),
+    ['Expiry', 'DTE', 'Pts', 'Stale', 'Open int.', 'RMSE', 'Core', 'Max', 'min g(k)', 'Butterfly', 'Wing L', 'Wing R', 'Calendar →'],
+    S.slices.map(s => {
+      const cal = S.calendar.find(c => c.from === s.label);
+      return { cells: [
+        { v: s.label, cls: 'em' }, s.dte.toFixed(1), s.nPoints, s.staleQuotes,
+        s.totalOi.toFixed(0),
+        s.rmseVol.toFixed(2), s.coreRmseVol.toFixed(2), s.maxAbsVol.toFixed(2),
+        { v: s.butterfly.minG.toExponential(1), cls: s.butterfly.arbFree ? 'pos' : 'neg' },
+        { v: s.butterfly.arbFree ? 'pass' : 'FAIL', cls: s.butterfly.arbFree ? 'pos' : 'neg' },
+        s.wings.left.toFixed(3), s.wings.right.toFixed(3),
+        cal ? { v: cal.violations === 0 ? 'pass' : `FAIL ${cal.worstVolPts.toFixed(2)}`,
+                cls: cal.violations === 0 ? 'pos' : 'neg' } : '—',
+      ]};
+    }));
+}
+
+/* --------------------------------------------------------------- prose */
+function renderProse() {
+  const into = (id, lines) => {
+    document.getElementById(id).innerHTML = (lines || []).map(l =>
+      '<p>' + esc(l).replace(/\b(MUST|NOT|PAID|ASYMMETRY|TRAILING)\b/g, '<strong>$1</strong>') + '</p>').join('');
+  };
+  const I = S.interpretation || {};
+  into('a-term', I.termStructure);
+  into('a-skew', I.skew);
+  into('a-vrp',  I.vrp);
+  into('a-rnd',  I.density);
+  into('a-diag', I.diagnostics);
+}
+
+function renderFooter() {
+  const v = S.meta.validation;
+  document.getElementById('foot').innerHTML =
+    `Deribit public API, no authentication. Black-76 on the per-expiry forward; ` +
+    `raw-SVI slices calibrated by the Zeliade quasi-explicit method; model-free implied variance ` +
+    `by log-contract replication; density by Breeden–Litzenberger off the fitted smile. ` +
+    `ACT/365 throughout — crypto settles continuously, so the 252-day convention does not apply. ` +
+    (v ? `On this snapshot pricing reproduces exchange marks to ${esc(v.maxTicks.toFixed(2))} ticks and ` +
+         `put–call parity holds to ${esc(v.parityBp.toFixed(2))} bp of the forward. ` : '') +
+    `Refreshed daily after Deribit's 08:00 UTC settlement. ` +
+    `Regenerate locally with <code>node bin/lab.js update</code>.`;
+}
+
+/* ------------------------------------------------------------------ boot */
+function renderAll() {
+  renderMasthead(); renderTiles(); buildSmileFilters();
+  drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawRnd(); drawDiag();
+  renderProse(); renderFooter();
+}
+renderAll();
+// The sequential ramp is selected per surface, so a theme change re-renders it.
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+// Age labels drift while the page is open.
+setInterval(renderMasthead, 5 * 60 * 1000);
+
+/* --------------------------------------------------------- live snapshot */
+const PARTS = ['core', 'surface', 'density', 'series'];
+
+function assemble(parts, hist) {
+  const { core, surface, density, series } = parts;
+  return Object.assign({}, core, {
+    slices: core.slices.map(s => Object.assign({}, s, {
+      points: (surface.points && surface.points[s.label]) || [],
+    })),
+    mesh: surface.mesh,
+    densities: density.densities,
+    vrpSeries: series.vrpSeries,
+    history: hist,
+  });
+}
+
+function looksValid(x) {
+  return !!(x && x.meta && fin(x.meta.asOf) && typeof x.meta.asOfIso === 'string'
+    && Array.isArray(x.slices) && x.slices.length >= 3 && x.slices.every(s => s.points.length)
+    && x.mesh && Array.isArray(x.mesh.rows) && Array.isArray(x.densities) && x.densities.length
+    && Array.isArray(x.vrpSeries) && x.cm && x.interpretation && Array.isArray(x.skew)
+    && Array.isArray(x.vrp) && Array.isArray(x.calendar));
+}
+
+/* Render a candidate snapshot; if it does not draw, fall back to what was on
+   screen. Database content is treated as untrusted input throughout. */
+function tryRender(next, source) {
+  const prevS = S, prevSource = SOURCE;
+  S = next; SOURCE = source;
+  try { renderAll(); return true; }
+  catch (e) {
+    console.warn('Live snapshot could not be rendered; keeping the previous one.', e);
+    S = prevS; SOURCE = prevSource; renderAll();
+    return false;
+  }
+}
+
+(async () => {
+  let db = null;
+  try {
+    db = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('db') : null;
+  } catch { db = null; }
+  if (!db) return;   // no database in this view: the embedded snapshot stands
+
+  const parts = {};
+  let hist = null;
+  const consider = () => {
+    if (!PARTS.every(id => parts[id])) return;
+    const run = parts.core.runId;
+    // Mid-update the four documents disagree; wait for the set to converge
+    // rather than drawing today's surface over yesterday's density.
+    if (!PARTS.every(id => parts[id].runId === run)) return;
+    const next = assemble(parts, hist || HIST);
+    if (!looksValid(next)) return;
+    if (next.meta.asOf < S.meta.asOf) return;   // never step backwards
+    if (tryRender(next, 'live')) HIST = next.history;
+  };
+
+  for (const id of PARTS) {
+    try {
+      db.doc('snap/' + id).onSnapshot(
+        snap => { if (snap.exists) { parts[id] = snap.data(); consider(); } },
+        err => console.warn('snap/' + id + ' subscription ended:', err && err.code));
+    } catch (e) { console.warn(e); }
+  }
+  try {
+    db.collection('history').orderBy('date', 'desc').limit(120).onSnapshot(q => {
+      hist = q.docs.map(d => d.data()).filter(r => r && typeof r.date === 'string').reverse();
+      if (SOURCE === 'live') {
+        HIST = hist;
+        S = Object.assign({}, S, { history: hist });
+        renderTiles();
+      } else {
+        consider();
+      }
+    }, err => console.warn('history subscription ended:', err && err.code));
+  } catch (e) { console.warn(e); }
+})();
+</script>

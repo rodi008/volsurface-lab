@@ -1,0 +1,73 @@
+name: Daily refresh
+
+# Deribit settles its daily options at 08:00 UTC. At 08:40 the expired slice is
+# gone from the chain and the next one is fully quoted. GitHub may start a
+# scheduled run some minutes late under load; nothing here depends on the minute.
+on:
+  schedule:
+    - cron: '40 8 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'out/history.jsonl'
+      - '**.md'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Exits non-zero when the health gate fails. The job stops here, nothing
+      # is deployed, and the site keeps serving the previous day.
+      - name: Fetch, calibrate and gate
+        run: node bin/lab.js update
+
+      - name: Build site
+        run: node bin/site.js
+
+      # History is the one piece of state that has to outlive the runner, so it
+      # is committed back. A push made with GITHUB_TOKEN never triggers another
+      # workflow run, so this cannot loop. The daily commit also counts as
+      # repository activity, which keeps GitHub from disabling the schedule
+      # after 60 quiet days.
+      - name: Record history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add out/history.jsonl
+          if git diff --cached --quiet; then
+            echo "history unchanged"
+          else
+            git commit -m "history: $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
