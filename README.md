@@ -2,6 +2,8 @@
 
 BTC option analytics on Deribit's public API. No API key, no account, no paid data.
 
+**Live:** https://rodi008.github.io/volsurface-lab/ — rebuilt daily at 08:40 UTC.
+
 The pipeline is a dependency chain, and the order matters: a risk-neutral density
 read off a slice that violates the butterfly condition is meaningless, so the
 arbitrage checks run before the results rather than after.

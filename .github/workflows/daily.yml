@@ -55,6 +55,11 @@ jobs:
             echo "history unchanged"
           else
             git commit -m "history: $(date -u +%Y-%m-%d)"
+            # Anything pushed to main since checkout would reject a plain push
+            # and take the deploy down with it. Only this job writes the
+            # history file and runs never overlap, so the rebase only ever
+            # replays this one commit onto unrelated changes.
+            git pull --rebase origin main
             git push
           fi
 
