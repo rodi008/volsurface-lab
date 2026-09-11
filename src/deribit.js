@@ -11,7 +11,13 @@ async function get(path, params = {}) {
   let lastErr;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: { accept: 'application/json' } });
+      // An unattended run cannot afford a request that never returns: without a
+      // deadline one stalled connection holds the whole job until it times out.
+      // Aborting after 20 s hands the request to the retry loop instead.
+      const res = await fetch(url, {
+        headers: { accept: 'application/json' },
+        signal: AbortSignal.timeout(20000),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
       const json = await res.json();
       if (json.error) throw new Error(`${path}: ${JSON.stringify(json.error)}`);

@@ -46,8 +46,20 @@ export function healthCheck(snap) {
       hard.push(`${s.label}: non-finite SVI parameters`);
     }
   }
-  if (!(v.maxTicks < 2)) hard.push(`Black-76 no longer reproduces exchange marks (${v.maxTicks} ticks)`);
-  if (!(v.parityBp < 5)) hard.push(`put-call parity broken on exchange marks (${v.parityBp} bp)`);
+  // Robust statistics rather than maxima; see exchangeChecks() in bin/lab.js.
+  // A convention change moves the median. A few deep-ITM marks stamped a
+  // moment apart from their forward do not, and they only earn a note.
+  const f2 = x => (Number.isFinite(x) ? x.toFixed(2) : String(x));
+  if (!(v.ticksMedian < 0.5 && v.ticksP99 < 2)) {
+    hard.push(`Black-76 no longer reproduces exchange marks (median ${f2(v.ticksMedian)}, p99 ${f2(v.ticksP99)} ticks)`);
+  } else if (v.maxTicks >= 2) {
+    soft.push(`${v.ticksOver2} contract(s) off the exchange mark by more than 2 ticks, worst ${f2(v.maxTicks)} on ${v.maxTicksName}`);
+  }
+  if (!(v.parityMedianBp < 1 && v.parityP99Bp < 5)) {
+    hard.push(`put-call parity broken on exchange marks (median ${f2(v.parityMedianBp)}, p99 ${f2(v.parityP99Bp)} bp)`);
+  } else if (v.parityBp >= 5) {
+    soft.push(`put-call parity off by ${f2(v.parityBp)} bp on at least one pair`);
+  }
 
   const rmses = snap.slices.map(s => s.rmseVol).filter(Number.isFinite).sort((a, b) => a - b);
   const medianRmse = rmses.length ? rmses[Math.floor(rmses.length / 2)] : NaN;

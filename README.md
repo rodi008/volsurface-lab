@@ -54,8 +54,11 @@ writing. Using spot would misprice every slice by the basis.
 **USD price space.** Deribit options are inverse: the premium is quoted in BTC as
 a fraction of a coin. `markPriceBTC * F` is the USD premium, and inverting that
 under Black-76 reproduces the exchange's own `mark_iv`. `lab.js validate` proves
-it — pricing matches exchange marks to under one tick and put-call parity holds
-to a fraction of a basis point.
+it — across the chain the median pricing error is a small fraction of a tick and
+put-call parity holds to a fraction of a basis point. The occasional miss of a
+few ticks is a deep-in-the-money contract whose mark and forward were stamped a
+moment apart, which is why the health gate reads the median and 99th
+percentile rather than the maximum.
 
 **ACT/365.** Crypto settles continuously. The 252-day equity convention would
 inflate every annualised figure by about 20%.

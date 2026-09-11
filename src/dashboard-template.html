@@ -1265,8 +1265,11 @@ function renderFooter() {
     `raw-SVI slices calibrated by the Zeliade quasi-explicit method; model-free implied variance ` +
     `by log-contract replication; density by Breeden–Litzenberger off the fitted smile. ` +
     `ACT/365 throughout — crypto settles continuously, so the 252-day convention does not apply. ` +
-    (v ? `On this snapshot pricing reproduces exchange marks to ${esc(v.maxTicks.toFixed(2))} ticks and ` +
-         `put–call parity holds to ${esc(v.parityBp.toFixed(2))} bp of the forward. ` : '') +
+    (v && fin(v.ticksMedian) && fin(v.ticksP99) && fin(v.parityMedianBp)
+      ? `On this snapshot Black-76 reproduces the exchange marks to a median of ${esc(v.ticksMedian.toFixed(2))} ` +
+        `ticks with 99% of contracts within ${esc(v.ticksP99.toFixed(2))}, and put–call parity holds to a ` +
+        `median of ${esc(v.parityMedianBp.toFixed(2))} bp of the forward. `
+      : '') +
     `Refreshed daily after Deribit's 08:00 UTC settlement. ` +
     `Regenerate locally with <code>node bin/lab.js update</code>.`;
 }

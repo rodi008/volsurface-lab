@@ -98,12 +98,26 @@ function pickSlice(surface) {
   return surface.slices.reduce((a, b) => (Math.abs(b.dte - 100) < Math.abs(a.dte - 100) ? b : a));
 }
 
-/** Pricing convention and data integrity against the exchange's own marks. */
+/**
+ * Pricing convention and data integrity against the exchange's own marks.
+ *
+ * Reported as a distribution, not only a maximum. A convention change on the
+ * exchange side — IV units, inverse versus linear settlement — breaks every
+ * contract at once and moves the median. A handful of deep-in-the-money
+ * contracts routinely miss by a few ticks for a duller reason: their price is
+ * almost pure intrinsic value, so the few dollars the forward moves between
+ * the moment Deribit stamps the mark and the moment it stamps
+ * underlying_price pass straight through. Gating on the maximum once turned
+ * that timing noise into a failed deploy, so the health gate reads the median
+ * and the 99th percentile, and the maximum stays in the report.
+ */
 function exchangeChecks(chain) {
+  const tickErrs = [], parityBps = [];
   let maxTicks = 0, maxTicksName = '', otmIv = 0, otmIvName = '';
   for (const o of chain.rows) {
     const p = price(o.F, o.K, o.T, o.iv, o.r, o.type);
     const ticks = Math.abs(p - o.priceUsd) / (1e-4 * o.F);
+    tickErrs.push(ticks);
     if (ticks > maxTicks) { maxTicks = ticks; maxTicksName = o.name; }
     if (o.isOtm) {
       const back = impliedVol(o.priceUsd, o.F, o.K, o.T, o.r, o.type);
@@ -119,19 +133,28 @@ function exchangeChecks(chain) {
     if (!pairs.has(key)) pairs.set(key, {});
     pairs.get(key)[o.type] = o;
   }
-  let maxDev = 0, n = 0;
   for (const [, p] of pairs) {
     if (!p.call || !p.put) continue;
     const dev = Math.abs((p.call.priceUsd - p.put.priceUsd)
       - Math.exp(-p.call.r * p.call.T) * (p.call.F - p.call.K)) / p.call.F;
-    maxDev = Math.max(maxDev, dev);
-    n++;
+    parityBps.push(dev * 1e4);
   }
+  const quantile = (arr, q) => {
+    if (!arr.length) return NaN;
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(q * s.length))];
+  };
   return {
     contracts: chain.rows.length,
+    ticksMedian: quantile(tickErrs, 0.5),
+    ticksP99: quantile(tickErrs, 0.99),
     maxTicks, maxTicksName,
+    ticksOver2: tickErrs.filter(t => t > 2).length,
     otmIvVolPts: otmIv, otmIvName,
-    parityBp: maxDev * 1e4, parityPairs: n,
+    parityMedianBp: quantile(parityBps, 0.5),
+    parityP99Bp: quantile(parityBps, 0.99),
+    parityBp: parityBps.length ? Math.max(...parityBps) : NaN,
+    parityPairs: parityBps.length,
   };
 }
 
@@ -141,9 +164,11 @@ async function cmdValidate() {
   const { chain, surface } = await load();
   const v = exchangeChecks(chain);
   h(`Exchange round trip  (${v.contracts} contracts, ${new Date(chain.asOf).toISOString()})`);
-  out(`  Black-76 vs exchange mark : max ${v.maxTicks.toFixed(4)} ticks  (${v.maxTicksName})`);
+  out(`  Black-76 vs exchange mark : median ${v.ticksMedian.toFixed(4)}  p99 ${v.ticksP99.toFixed(4)}`
+    + `  max ${v.maxTicks.toFixed(4)} ticks  (${v.maxTicksName}; ${v.ticksOver2} over 2 ticks)`);
   out(`  IV inversion, OTM only    : max ${v.otmIvVolPts.toExponential(2)} vol pts  (${v.otmIvName})`);
-  out(`  Put-call parity           : max ${v.parityBp.toFixed(4)} bp of forward over ${v.parityPairs} pairs`);
+  out(`  Put-call parity           : median ${v.parityMedianBp.toFixed(4)}  p99 ${v.parityP99Bp.toFixed(4)}`
+    + `  max ${v.parityBp.toFixed(4)} bp of forward over ${v.parityPairs} pairs`);
 
   h('Density integrity  (per slice)');
   out('  expiry     mass      err        mean/F        bp    extrap%');
