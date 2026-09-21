@@ -205,6 +205,7 @@ section { margin-bottom: 52px; scroll-margin-top: 16px; }
   border-radius: 4px; padding: 16px 18px 14px;
 }
 .panel + .panel { margin-top: 16px; }
+.context-panel { margin-bottom: 40px; }
 .panel-title {
   font-size: 12px; font-weight: 600; color: var(--ink-2);
   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;
@@ -345,6 +346,12 @@ footer {
 
 <div class="wrap">
   <div class="tiles" id="tiles"></div>
+
+  <div class="panel context-panel" id="context-panel">
+    <div class="panel-title">Today against its own year</div>
+    <div class="panel-sub">Where the current readings sit in their own twelve-month distribution. A level says little on its own — 34% implied volatility is high for equities and quiet for bitcoin — so the range it comes from is the context.</div>
+    <div class="chart" id="context"></div>
+  </div>
 
   <section id="s1">
     <div class="stage-head">
@@ -664,6 +671,53 @@ function renderTiles() {
     `<div class="tile"><div class="k">${esc(t.k)}</div><div class="v">${esc(t.v)}</div>` +
     `<div class="n">${esc(t.n)}</div>${t.d ? `<div class="d">${t.d}</div>` : ''}${spark(t.s)}</div>`
   ).join('');
+}
+
+/* --------------------------------------------- today against its year */
+function drawContext() {
+  const host = document.getElementById('context');
+  const panel = document.getElementById('context-panel');
+  const C = S.context;
+  if (!host || !panel) return;
+  // Older snapshots carry no context block; hide the panel rather than draw an
+  // empty one.
+  if (!C || !C.impliedVol) { panel.hidden = true; return; }
+  panel.hidden = false;
+  host.innerHTML = '';
+
+  const rows = [
+    { key: 'impliedVol',  label: '30-day implied vol (DVOL)', unit: '%',   d: 1 },
+    { key: 'realizedVol', label: '30-day realized vol',       unit: '%',   d: 1 },
+    { key: 'premium',     label: 'Premium, implied − realized', unit: ' vp', d: 1 },
+  ].filter(r => C[r.key] && fin(C[r.key].now));
+
+  const W = 1000, rowH = 56, top = 16, H = top + rows.length * rowH + 16;
+  const x0 = 224, x1 = W - 150;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Current readings against their own twelve-month range' });
+  const g = el('g');
+
+  rows.forEach((r, i) => {
+    const b = C[r.key];
+    const y = top + i * rowH + rowH / 2 - 4;
+    const xs = scale(b.min, b.max, x0, x1);
+    const v = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(r.d) + r.unit;
+    g.appendChild(txt(r.label, { x: 0, y: y + 4, fill: 'var(--ink-2)', 'font-size': 12.5 }));
+    // Full range as a hairline, the middle half as a band, the median as a tick.
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: y, y2: y, stroke: 'var(--rule-strong)', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+    g.appendChild(el('line', { x1: xs(b.p25), x2: xs(b.p75), y1: y, y2: y, stroke: 'var(--s1)', 'stroke-width': 9, opacity: 0.28, 'stroke-linecap': 'round' }));
+    g.appendChild(el('line', { x1: xs(b.median), x2: xs(b.median), y1: y - 9, y2: y + 9, stroke: 'var(--ink-3)', 'stroke-width': 1.5 }));
+    g.appendChild(el('circle', { cx: xs(b.now), cy: y, r: 5.5, fill: 'var(--accent-mark)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+    g.appendChild(txt(v(b.min), { x: x0, y: y + 21, 'text-anchor': 'middle', 'font-size': 10 }));
+    g.appendChild(txt(v(b.max), { x: x1, y: y + 21, 'text-anchor': 'middle', 'font-size': 10 }));
+    g.appendChild(txt('median ' + v(b.median), { x: xs(b.median), y: y - 15, 'text-anchor': 'middle', 'font-size': 10 }));
+    g.appendChild(txt(v(b.now), { x: x1 + 16, y: y + 1, fill: 'var(--ink)', 'font-weight': 600, 'font-size': 13 }));
+    g.appendChild(txt('p' + Math.round(b.pct * 100), { x: x1 + 16, y: y + 15, fill: 'var(--ink-3)', 'font-size': 10.5 }));
+  });
+  g.appendChild(txt(`${C.days} daily readings · dot = today, band = middle half of the year, p = percentile within it`,
+    { x: 0, y: H - 2, 'font-size': 10.5 }));
+  svg.appendChild(g);
+  host.appendChild(svg);
 }
 
 /* ------------------------------------------------------- 01a  heatmap */
@@ -1284,7 +1338,7 @@ function renderFooter() {
 
 /* ------------------------------------------------------------------ boot */
 function renderAll() {
-  renderMasthead(); renderTiles(); buildSmileFilters();
+  renderMasthead(); renderTiles(); drawContext(); buildSmileFilters();
   drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawRnd(); drawDiag();
   renderProse(); renderFooter();
 }

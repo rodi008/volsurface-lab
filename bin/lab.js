@@ -362,6 +362,29 @@ async function cmdAll({ writeHistory = false } = {}) {
     dvol: ctx.dvol.length ? ctx.dvol[ctx.dvol.length - 1].close / 100 : null,
   };
 
+  // Where today sits in its own year. A level means little on its own — 34%
+  // implied volatility is high for equities and quiet for bitcoin — so the
+  // page needs the distribution the number comes from. DVOL and the price
+  // history are already fetched for the premium series; this reads the same
+  // rows a second time.
+  const yr = vrp.series.slice(-365).filter(r => Number.isFinite(r.impliedVol) && Number.isFinite(r.rvTrailing));
+  const spread = arr => {
+    const s = [...arr].sort((a, b) => a - b);
+    const q = p => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+    return { min: s[0], p25: q(0.25), median: q(0.5), p75: q(0.75), max: s[s.length - 1] };
+  };
+  const band = arr => {
+    if (arr.length < 60) return null;
+    const now = arr[arr.length - 1];
+    return { now, ...spread(arr), pct: arr.filter(x => x <= now).length / arr.length };
+  };
+  const context = yr.length >= 60 ? {
+    days: yr.length,
+    impliedVol: band(yr.map(r => r.impliedVol * 100)),
+    realizedVol: band(yr.map(r => r.rvTrailing * 100)),
+    premium: band(yr.map(r => r.vrpAnteVolPts).filter(Number.isFinite)),
+  } : null;
+
   const past = readHistory(HISTORY_FILE).filter(r => r.date < date);
   const rrHistory = past.map(r => r.rr30).filter(Number.isFinite);
   const rmses = surface.slices.map(s => s.rmseVol).sort((a, b) => a - b);
@@ -410,6 +433,7 @@ async function cmdAll({ writeHistory = false } = {}) {
     densities,
     headline,
     cm,
+    context,
     history: [...past, today].slice(-120),
     interpretation: {
       termStructure: readTermStructure(surface),
