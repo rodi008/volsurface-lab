@@ -444,6 +444,12 @@ footer {
       <span class="note">Breeden–Litzenberger</span>
     </div>
     <div class="panel">
+      <div class="panel-title">Market-implied price cone</div>
+      <div class="panel-sub">The same distributions read across time: where the option market prices the terminal price of each listed expiry. It is not a forecast. This is the risk-neutral measure — what the market charges, premium included — so its mean is the forward by construction, and demand for crash protection fattens the lower band beyond any real-world estimate of it.</div>
+      <div class="legend" id="cone-legend"></div>
+      <div class="chart" id="cone"></div>
+    </div>
+    <div class="panel">
       <div class="panel-sub">The second derivative of the call price with respect to strike is the risk-neutral density; the first derivative is the probability of finishing above a level. Both are exact identities, differentiated off the calibrated smile rather than off raw quotes.</div>
       <div class="formula">q(K) = e<sup>rT</sup> &middot; &part;<sup>2</sup>C/&part;K<sup>2</sup> &nbsp;&nbsp;&nbsp; Q(S<sub>T</sub> &gt; X) = &minus;e<sup>rT</sup> &middot; &part;C/&part;K |<sub>K=X</sub></div>
       <div class="legend" id="rnd-legend"></div>
@@ -1231,6 +1237,90 @@ function drawVrpTs() {
   ]);
 }
 
+/* ------------------------------------------------ 05a  price cone */
+function drawCone() {
+  const host = document.getElementById('cone');
+  if (!host) return;
+  host.innerHTML = '';
+  const ds = [...S.densities].filter(d => d.summary && d.summary.quantiles).sort((a, b) => a.dte - b.dte);
+  if (ds.length < 2) return;
+
+  // The cone starts at today, where every quantile is the spot price, and
+  // opens with the square root of time because variance grows linearly in it.
+  const spot = S.meta.spot;
+  const q = ds.map(d => Object.assign({ dte: d.dte, label: d.label, F: d.F }, d.summary.quantiles));
+  const pts = [{ dte: 0, label: 'today', F: spot, p05: spot, p25: spot, p50: spot, p75: spot, p95: spot }, ...q];
+  const money = v => (v >= 10000 ? '$' + Math.round(v / 1000) + 'k' : '$' + Math.round(v).toLocaleString('en-US'));
+
+  const W = 1000, ml = 66, mr = 116, mt = 18, mb = 46, H = 340;
+  const x0 = ml, x1 = W - mr, y0 = mt, y1 = H - mb;
+  const lo = Math.min(...pts.map(p => p.p05)) * 0.96;
+  const hi = Math.max(...pts.map(p => p.p95)) * 1.04;
+  const xs = scale(0, pts[pts.length - 1].dte, x0, x1);
+  const ys = scale(lo, hi, y1, y0);
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Option-implied range of terminal prices by expiry' });
+  const g = el('g');
+
+  for (const t of niceTicks(lo, hi, 5)) {
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: ys(t), y2: ys(t), stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.appendChild(txt(money(t), { x: x0 - 8, y: ys(t) + 3.5, 'text-anchor': 'end' }));
+  }
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: y1, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+
+  const band = (hiKey, loKey, opacity) => {
+    const up = pts.map(p => `${xs(p.dte).toFixed(1)},${ys(p[hiKey]).toFixed(1)}`);
+    const dn = pts.slice().reverse().map(p => `${xs(p.dte).toFixed(1)},${ys(p[loKey]).toFixed(1)}`);
+    g.appendChild(el('polygon', { points: up.concat(dn).join(' '), fill: 'var(--s1)', opacity }));
+  };
+  band('p95', 'p05', 0.12);
+  band('p75', 'p25', 0.20);
+
+  const path = key => pts.map((p, i) => `${i ? 'L' : 'M'}${xs(p.dte).toFixed(1)},${ys(p[key]).toFixed(1)}`).join(' ');
+  g.appendChild(el('path', { d: path('F'), fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 1 }));
+  g.appendChild(el('path', { d: path('p50'), fill: 'none', stroke: 'var(--accent-mark)', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+  g.appendChild(el('circle', { cx: xs(0), cy: ys(spot), r: 4, fill: 'var(--accent-mark)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+
+  const hl = S.headline;
+  if (hl && hl.level > lo && hl.level < hi) {
+    g.appendChild(el('line', { x1: x0, x2: x1, y1: ys(hl.level), y2: ys(hl.level), stroke: 'var(--accent)', 'stroke-width': 1 }));
+    g.appendChild(txt(`${money(hl.level)} · ${fmt.pct(hl.p, 1)} by ${hl.label}`, {
+      x: x0 + 6, y: ys(hl.level) - 6, fill: 'var(--accent)', 'font-weight': 600 }));
+  }
+
+  const last = pts[pts.length - 1];
+  for (const [key, label, col] of [['p95', '95th', 'var(--ink-2)'], ['p50', 'median', 'var(--accent)'], ['p05', '5th', 'var(--ink-2)']]) {
+    g.appendChild(txt(`${label} ${money(last[key])}`, { x: x1 + 8, y: ys(last[key]) + 3.5, fill: col, 'font-weight': key === 'p50' ? 600 : 400 }));
+  }
+  for (const p of q) g.appendChild(txt(p.label.slice(0, 5), { x: xs(p.dte), y: y1 + 16, 'text-anchor': 'middle', 'font-size': 9.5 }));
+  g.appendChild(txt('days to expiry →', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }));
+
+  const tip = mkTip(host);
+  q.forEach((p, i) => {
+    const left = i === 0 ? xs(0) : xs((q[i - 1].dte + p.dte) / 2);
+    const right = i === q.length - 1 ? x1 : xs((q[i + 1].dte + p.dte) / 2);
+    const hit = el('rect', { x: left, y: y0, width: Math.max(right - left, 6), height: y1 - y0, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('expiry', p.label) + row('dte', p.dte.toFixed(0) + 'd') + row('forward', fmt.usd(p.F)) +
+        row('95th', fmt.usd(p.p95)) + row('75th', fmt.usd(p.p75)) + row('median', fmt.usd(p.p50)) +
+        row('25th', fmt.usd(p.p25)) + row('5th', fmt.usd(p.p05)),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  });
+
+  svg.appendChild(g);
+  host.appendChild(svg);
+  legend(document.getElementById('cone-legend'), [
+    { color: 'var(--accent-mark)', label: 'median' },
+    { color: 'var(--s1)', label: '50% interval', dot: true },
+    { color: 'var(--s1)', label: '90% interval', dot: true },
+    { color: 'var(--ink-3)', label: 'forward' },
+  ]);
+}
+
 /* ---------------------------------------------------------------- 05  RND */
 function drawRnd() {
   const host = document.getElementById('rnd');
@@ -1373,7 +1463,7 @@ function renderFooter() {
 /* ------------------------------------------------------------------ boot */
 function renderAll() {
   renderMasthead(); renderTiles(); drawContext(); buildSmileFilters();
-  drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawRnd(); drawDiag();
+  drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawCone(); drawRnd(); drawDiag();
   renderProse(); renderFooter();
 }
 renderAll();
