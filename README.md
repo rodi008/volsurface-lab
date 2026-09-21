@@ -2,7 +2,10 @@
 
 BTC option analytics on Deribit's public API. No API key, no account, no paid data.
 
-**Live:** https://rodi008.github.io/volsurface-lab/ — rebuilt daily at 08:40 UTC.
+**Live:** [BTC](https://rodi008.github.io/volsurface-lab/) ·
+[ETH](https://rodi008.github.io/volsurface-lab/eth.html) ·
+[guide, in Dutch](https://rodi008.github.io/volsurface-lab/uitleg.html) — rebuilt
+daily at 08:40 UTC.
 
 The pipeline is a dependency chain, and the order matters: a risk-neutral density
 read off a slice that violates the butterfly condition is meaningless, so the
@@ -24,7 +27,9 @@ node bin/lab.js vrp         # variance risk premium, ex-ante and ex-post
 node bin/lab.js rnd         # Breeden-Litzenberger density
 node bin/lab.js all         # everything; writes out/snapshot.json
 node bin/lab.js update      # the unattended daily run (see "Daily update")
+node bin/lab.js update --currency=ETH   # the same run for ether
 node bin/dashboard.js       # renders out/snapshot.json into out/dashboard.html
+node bin/site.js            # builds site/index.html, site/eth.html, site/uitleg.html
 node test/analytic.test.mjs # closed-form checks against Black-Scholes
 ```
 
@@ -142,10 +147,15 @@ and the computation is plain Node.
 
 Each run starts at 08:40 UTC, after Deribit's 08:00 UTC settlement:
 
-1. `node bin/lab.js update` fetches, calibrates and runs the health gate. On
-   `HEALTH: FAIL` it exits non-zero, the job stops, nothing is deployed, the
-   site keeps serving the previous day, and GitHub emails the repository owner.
-2. `node bin/site.js` wraps the dashboard into `site/index.html`.
+1. `node bin/lab.js update` fetches, calibrates and runs the health gate for
+   bitcoin. On `HEALTH: FAIL` it exits non-zero, the job stops, nothing is
+   deployed, the site keeps serving the previous day, and GitHub emails the
+   repository owner. Ether runs next under `--currency=ETH`, marked
+   `continue-on-error`: it is additive, so a bad ether run costs that page for
+   a day rather than taking the bitcoin page down with it.
+2. `node bin/site.js` wraps each asset's dashboard into `site/index.html` and
+   `site/eth.html` and builds the guide. Each page is handed the other asset's
+   readings, which a single pipeline run cannot know.
 3. `out/history.jsonl` is committed back. It is the only state that has to
    outlive the runner, and the daily commit counts as repository activity,
    which keeps GitHub from disabling the schedule after 60 quiet days.

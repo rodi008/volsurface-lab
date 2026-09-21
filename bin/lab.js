@@ -20,7 +20,7 @@ import { buildSurface, surfaceMesh } from '../src/surface.js';
 import { price, impliedVol } from '../src/black76.js';
 import { skewTermStructure } from '../src/skew.js';
 import { vrpByExpiry, expostVrpSeries, vrpStats, realizedAll, realizedCloseToClose } from '../src/varswap.js';
-import { riskNeutralDensity, densitySummary, probAbove, niceLevels } from '../src/rnd.js';
+import { riskNeutralDensity, densitySummary, probAbove, niceLevels, roundStep } from '../src/rnd.js';
 import { readTermStructure, readSkew, readVrp, readDensity, readDiagnostics } from '../src/interpret.js';
 import { cmVol, cmLinear } from '../src/constmat.js';
 import { readHistory, upsertHistory } from '../src/history.js';
@@ -29,9 +29,6 @@ import { buildDashboard } from '../src/build-dashboard.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'out');
-const HISTORY_FILE = join(OUT, 'history.jsonl');
-const DB_DIR = join(OUT, 'db');
-const BATCH_FILE = join(DB_DIR, 'batch.json');
 
 const argv = process.argv.slice(2);
 const cmd = argv.find(a => !a.startsWith('-')) || 'all';
@@ -42,7 +39,15 @@ const flag = (name, dflt = null) => {
 const has = name => argv.includes(`--${name}`);
 const JSON_OUT = has('json');
 let QUIET = has('quiet');
-const CCY = flag('currency', 'BTC');
+const CCY = (flag('currency', 'BTC') || 'BTC').toUpperCase();
+
+// One file set per currency. BTC keeps the unsuffixed names it started with,
+// so its history carries on uninterrupted.
+const SFX = CCY === 'BTC' ? '' : `-${CCY}`;
+const HISTORY_FILE = join(OUT, `history${SFX}.jsonl`);
+const SNAPSHOT_FILE = join(OUT, `snapshot${SFX}.json`);
+const DB_DIR = join(OUT, `db${SFX}`);
+const BATCH_FILE = join(DB_DIR, 'batch.json');
 
 /** Report output; suppressed by --quiet and by the unattended update. */
 const out = (...args) => { if (!QUIET) console.log(...args); };
@@ -77,7 +82,7 @@ function wrap(s, width) {
 
 async function load({ needHistory = false } = {}) {
   const jobs = [fetchChain(CCY)];
-  if (needHistory) jobs.push(fetchOhlc(400), fetchDvol(400, CCY));
+  if (needHistory) jobs.push(fetchOhlc(400, `${CCY}-PERPETUAL`), fetchDvol(400, CCY));
   const [chain, ohlc, dvol] = await Promise.all(jobs);
   const surface = buildSurface(chain);
   return { chain, surface, ohlc, dvol };
@@ -334,7 +339,10 @@ async function cmdAll({ writeHistory = false } = {}) {
   let headline = null, headlineRnd = null;
   if (full.length) {
     const pick = full.reduce((a, b) => (Math.abs(b.s.dte - 100) < Math.abs(a.s.dte - 100) ? b : a));
-    const level = Math.ceil(pick.s.F * 1.2 / 25000) * 25000;
+    // The step has to fit the price: $25k rungs are meaningless on a $3,500
+    // underlying, and $1k rungs are noise on bitcoin.
+    const step = roundStep(pick.s.F);
+    const level = Math.ceil(pick.s.F * 1.2 / step) * step;
     headlineRnd = pick.rnd;
     headline = {
       label: pick.s.label, dte: pick.s.dte, F: pick.s.F, level,
@@ -452,8 +460,8 @@ async function cmdAll({ writeHistory = false } = {}) {
   const rounded = roundDeep(snapshot);
   mkdirSync(OUT, { recursive: true });
   const json = JSON.stringify(rounded);
-  writeFileSync(join(OUT, 'snapshot.json'), json);
-  out(`\nsnapshot written: out/snapshot.json  (${(json.length / 1024).toFixed(0)} KB)`);
+  writeFileSync(SNAPSHOT_FILE, json);
+  out(`\nsnapshot written: out/snapshot${SFX}.json  (${(json.length / 1024).toFixed(0)} KB)`);
   if (JSON_OUT) console.log(json);
   return rounded;
 }
@@ -473,13 +481,13 @@ async function cmdUpdate() {
 
   const snap = await cmdAll({ writeHistory: true });
   const health = snap.meta.health;
-  const built = buildDashboard(ROOT);
+  const built = buildDashboard(ROOT, CCY);
 
   const c = snap.cm, hl = snap.headline;
   console.log(`snapshot ${snap.meta.asOfIso.slice(0, 16)}Z  spot ${Math.round(snap.meta.spot)}`
     + `  ATM30 ${fx(c.atm30 * 100, 1)}%  RR25-30d ${fx(c.rr30)}  VRP30 ${fx(c.vrp30)} (t ${fx(c.vrpT30, 1)})`
     + (hl ? `  Q(>${hl.level / 1000}k, ${hl.label}) ${fx(hl.p * 100, 1)}%` : ''));
-  console.log(`dashboard  out/dashboard.html  ${(built.bytes / 1024).toFixed(0)} KB`);
+  console.log(`dashboard  out/${built.file.split(/[\\/]/).pop()}  ${(built.bytes / 1024).toFixed(0)} KB`);
   for (const s of health.soft) console.log(`  note: ${s}`);
   for (const s of health.hard) console.log(`  FAIL: ${s}`);
 

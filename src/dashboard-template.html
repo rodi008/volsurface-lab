@@ -127,6 +127,16 @@ h1 {
   color: var(--accent); text-decoration: none;
 }
 .guide-link:hover { text-decoration: underline; }
+.ccy-nav { display: flex; gap: 4px; margin-top: 10px; }
+.ccy {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border: 1px solid var(--rule-strong); border-radius: 3px;
+  color: var(--ink-2); text-decoration: none; background: var(--panel-2);
+}
+.ccy:hover { border-color: var(--accent-mark); color: var(--ink); }
+.ccy.on { background: var(--accent-mark); border-color: var(--accent-mark); color: var(--on-accent); }
+.tile-link { color: var(--accent); text-decoration: none; font-weight: 600; }
+.tile-link:hover { text-decoration: underline; }
 footer a { color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
@@ -338,6 +348,7 @@ footer {
     <div>
       <h1>Vol Surface Lab</h1>
       <div class="sub" id="snapline"></div>
+      <div class="ccy-nav" id="ccy-nav"></div>
       <a class="guide-link" href="uitleg.html" lang="nl">Wat zie je hier? Uitleg in gewone taal →</a>
     </div>
     <div class="chips" id="chips"></div>
@@ -608,6 +619,16 @@ function renderMasthead() {
          `martingale ${worstMeanBp.toFixed(1)} bp`),
   ].join('');
 
+  // The switcher only appears once a second asset has a snapshot of its own.
+  const nav = document.getElementById('ccy-nav');
+  if (nav) {
+    nav.innerHTML = (S.nav && S.nav.length > 1)
+      ? S.nav.map(n => n.code === S.meta.currency
+          ? `<span class="ccy on">${esc(n.code)}</span>`
+          : `<a class="ccy" href="${esc(n.page)}">${esc(n.code)}</a>`).join('')
+      : '';
+  }
+
   document.getElementById('fitnote').textContent = `median slice RMSE ${medRmse.toFixed(2)} vol pts`;
   const e = S.vrpStats && S.vrpStats.expost;
   document.getElementById('vrpnote').textContent = e
@@ -662,11 +683,24 @@ function renderTiles() {
     { k: 'RR25 · 30d', v: fmt.vp(c.rr30),
       n: `vol pts · BF25 ${fmt.vp(c.bf30)}`,
       d: dPts('rr30'), s: series('rr30') },
-    { k: hl ? `Q(BTC > ${fmt.usdk(hl.level)}) · ${hl.label}` : 'Headline density',
+    { k: hl ? `Q(${meta.currency} > ${fmt.usdk(hl.level)}) · ${hl.label}` : 'Headline density',
       v: hl ? fmt.pct(hl.p, 1) : '—',
       n: hl ? `${hl.dte.toFixed(0)} days · forward ${fmt.usd(hl.F)}` : '',
       d: hlD, s: hist.filter(sameHl).map(r => r.headline.p).slice(-60) },
   ];
+  // The peer asset: the one number on this page that does not come from this
+  // page's own chain, and the reason both assets are worth running.
+  if (S.peer && S.peer.cm && fin(S.peer.cm.atm30) && fin(c.atm30)) {
+    const p = S.peer;
+    tiles.push({
+      k: `${p.currency} · 30d implied`,
+      v: fmt.pct(p.cm.atm30),
+      n: `${fmt.vp((p.cm.atm30 - c.atm30) * 100, 1)} vol pts vs ${meta.currency} · premium ${fmt.vp(p.cm.vrp30, 1)}`,
+      d: `<a class="tile-link" href="${esc(p.page)}">open ${esc(p.currency)} →</a>`,
+      s: [],
+    });
+  }
+
   document.getElementById('tiles').innerHTML = tiles.map(t =>
     `<div class="tile"><div class="k">${esc(t.k)}</div><div class="v">${esc(t.v)}</div>` +
     `<div class="n">${esc(t.n)}</div>${t.d ? `<div class="d">${t.d}</div>` : ''}${spark(t.s)}</div>`

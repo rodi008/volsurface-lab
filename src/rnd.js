@@ -125,8 +125,10 @@ export function quantile(rnd, p) {
  * forward rather than fixed, so the ladder stays informative when the price
  * moves: a fixed $100k rung reads 100% or 0% after a large enough move.
  */
+export const roundStep = F => (F < 20000 ? 1000 : F < 50000 ? 5000 : F < 200000 ? 10000 : 25000);
+
 export function niceLevels(F, extra = []) {
-  const step = F < 20000 ? 1000 : F < 50000 ? 5000 : F < 200000 ? 10000 : 25000;
+  const step = roundStep(F);
   const set = new Set([0.6, 0.75, 0.9, 1.0, 1.25, 1.5, 2.0].map(r => Math.round(F * r / step) * step));
   for (const x of extra) set.add(x);
   return [...set].filter(x => x > 0).sort((a, b) => a - b);
