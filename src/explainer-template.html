@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wat je ziet · Vol Surface Lab</title>
+<meta name="description" content="Leesgids bij het Vol Surface Lab: wat elk onderdeel van het BTC-optiedashboard meet, hoe je het leest en wat het vandaag zegt.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%90</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+/* Same tokens as the dashboard, so the two pages read as one site. */
+:root {
+  color-scheme: light;
+  --ground: #eef2f6; --panel: #f7f9fb; --panel-2: #ffffff;
+  --ink: #0d1520; --ink-2: #4a5768; --ink-3: #7b8798;
+  --rule: #dbe3ec; --rule-strong: #c2cedd;
+  --accent: #0a7f8d; --accent-mark: #0aa6b8; --accent-soft: rgba(10,166,184,0.10);
+  --put: #e34948; --call: #2a78d6;
+  --measure: 68ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #0a0e12; --panel: #12171d; --panel-2: #171d25;
+    --ink: #eef4fa; --ink-2: #9aa9bb; --ink-3: #6f7d8e;
+    --rule: #1e2731; --rule-strong: #2b3742;
+    --accent: #22c3d6; --accent-mark: #22c3d6; --accent-soft: rgba(34,195,214,0.12);
+    --put: #e66767; --call: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0a0e12; --panel: #12171d; --panel-2: #171d25;
+  --ink: #eef4fa; --ink-2: #9aa9bb; --ink-3: #6f7d8e;
+  --rule: #1e2731; --rule-strong: #2b3742;
+  --accent: #22c3d6; --accent-mark: #22c3d6; --accent-soft: rgba(34,195,214,0.12);
+  --put: #e66767; --call: #3987e5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 28px 24px 96px; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent-mark); outline-offset: 2px; }
+.back { font-size: 13px; font-weight: 500; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; margin: 18px 0 6px; text-wrap: balance; }
+.dek { font-family: "IBM Plex Serif", Georgia, serif; font-size: 18px; color: var(--ink-2); margin: 0; max-width: var(--measure); }
+.meta { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; color: var(--ink-3); margin-top: 12px; }
+nav.toc {
+  margin: 28px 0 8px; padding: 14px 16px; border: 1px solid var(--rule);
+  border-radius: 4px; background: var(--panel);
+  display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px;
+}
+nav.toc a { text-decoration: none; color: var(--ink-2); }
+nav.toc a:hover { color: var(--accent); }
+nav.toc .n { font-family: "IBM Plex Mono", monospace; color: var(--accent); font-size: 11px; margin-right: 4px; }
+section { margin-top: 48px; scroll-margin-top: 16px; }
+h2 {
+  font-size: 21px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--rule-strong);
+  display: flex; gap: 12px; align-items: baseline; text-wrap: balance;
+}
+h2 .n { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
+h3 { font-size: 15px; font-weight: 600; margin: 24px 0 6px; }
+p, li, dd { font-family: "IBM Plex Serif", Georgia, serif; font-size: 16.5px; line-height: 1.66; color: var(--ink-2); max-width: var(--measure); }
+p { margin: 0 0 0.9em; }
+strong { color: var(--ink); font-weight: 500; }
+em { font-style: italic; }
+.mono, code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.88em; }
+code { background: var(--accent-soft); padding: 1px 4px; border-radius: 2px; color: var(--ink); }
+.today {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  border-radius: 4px; overflow: hidden; margin: 6px 0 18px;
+}
+.today > div { background: var(--panel); padding: 15px 17px; }
+.today .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.075em; color: var(--ink-3); font-weight: 600; }
+.today .v { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin-top: 6px; line-height: 1.1; }
+.today .s { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); margin-top: 5px; }
+.callout {
+  border-left: 2px solid var(--accent-mark); background: var(--panel);
+  padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0;
+}
+.callout p { margin: 0; font-size: 15.5px; }
+.callout .lbl { font-family: "IBM Plex Sans", sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 4px; }
+figure { margin: 18px 0 20px; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px 10px; }
+figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+figcaption { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; max-width: var(--measure); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 3px; border-radius: 1.5px; display: inline-block; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+dl.terms { margin: 0; }
+dl.terms dt { font-weight: 600; font-size: 14.5px; margin-top: 14px; }
+dl.terms dd { margin: 2px 0 0; font-size: 15.5px; }
+ul.plain { padding-left: 1.1em; margin: 0 0 0.9em; }
+ul.plain li { margin-bottom: 0.4em; }
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-strong); font-size: 12.5px; color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Terug naar het dashboard</a>
+  <h1>Wat je ziet</h1>
+  <p class="dek">Een leesgids bij het Vol Surface Lab: wat elk onderdeel van het dashboard meet, hoe je het leest, en wat het vandaag zegt.</p>
+  <div class="meta">Getallen uit de snapshot van <span data-f="date">…</span> · BTC-opties op Deribit</div>
+
+  <nav class="toc" aria-label="Inhoud">
+    <a href="#kort">In het kort</a>
+    <a href="#vandaag">Vandaag</a>
+    <a href="#tegels">De tegels</a>
+    <a href="#s1"><span class="n">01</span>Het oppervlak</a>
+    <a href="#s2"><span class="n">02</span>Termijnstructuur</a>
+    <a href="#s3"><span class="n">03</span>Skew</a>
+    <a href="#s4"><span class="n">04</span>Variantiepremie</a>
+    <a href="#s5"><span class="n">05</span>Kansverdeling</a>
+    <a href="#s6"><span class="n">06</span>Diagnostiek</a>
+    <a href="#niet">Wat dit niet is</a>
+    <a href="#woorden">Woordenlijst</a>
+  </nav>
+
+  <section id="kort">
+    <h2>In het kort</h2>
+    <p>Een optie is het recht, maar niet de plicht, om bitcoin op een vaste datum tegen een vaste prijs te kopen (een <em>call</em>) of te verkopen (een <em>put</em>). Die vaste prijs heet de <em>strike</em>, de datum de <em>expiry</em>.</p>
+    <p>Wat zo'n recht kost, hangt vooral af van één ding: hoe hard de markt verwacht dat de prijs gaat bewegen. Hoe onrustiger de verwachting, hoe duurder de optie. Alle andere ingrediënten van de prijs zijn bekend, dus je kunt die verwachting terugrekenen uit wat de optie kost. Dat getal heet de <strong>implied volatility</strong> (IV): de beweeglijkheid die de markt in de prijs heeft verwerkt, als percentage per jaar.</p>
+    <p>Dit dashboard haalt elke dag alle BTC-opties van Deribit op, de grootste optiebeurs voor crypto, en rekent voor elk contract die IV uit. Samen vertellen ze hoe onrustig de markt het verwacht, waar ze bang voor is, en welke kansen ze inprijst.</p>
+  </section>
+
+  <section id="vandaag">
+    <h2>Vandaag in één oogopslag</h2>
+    <div class="today">
+      <div><div class="k">Verwachte beweeglijkheid</div><div class="v" data-f="atm30">…</div><div class="s">per jaar · 30-daagse ATM-IV</div></div>
+      <div><div class="k">Normale uitslag in 30 dagen</div><div class="v">±<span data-f="move30">…</span></div><div class="s">± <span data-f="move30usd">…</span> rond <span data-f="spot">…</span></div></div>
+      <div><div class="k">Ingeprijsde kans</div><div class="v" data-f="hlp">…</div><div class="s">BTC boven <span data-f="hllevel">…</span> op <span data-f="hllabel">…</span></div></div>
+    </div>
+    <p>Een jaarlijkse volatiliteit reken je om naar een kortere periode met de wortel van de tijd: <span class="mono" data-f="moveformula">…</span>. Dat is één standaardafwijking. In grofweg twee van de drie gevallen blijft de koers binnen die band, in één op de drie gaat hij erbuiten. Bitcoin heeft vaker dan een normale verdeling voorspelt uitschieters, dus lees het als orde van grootte, niet als belofte.</p>
+  </section>
+
+  <section id="tegels">
+    <h2>De vijf tegels bovenaan</h2>
+    <dl class="terms">
+      <dt>Spot</dt>
+      <dd>De huidige BTC-prijs. De <em>forward</em> eronder is de prijs voor levering op een latere datum. Die ligt meestal iets hoger, omdat geld lenen in crypto een paar procent per jaar kost.</dd>
+      <dt>ATM implied · 30d</dt>
+      <dd>De IV van opties met een strike rond de huidige prijs (<em>at the money</em>), omgerekend naar precies 30 dagen. De beurs noteert niet elke looptijd, dus het dashboard interpoleert tussen de dichtstbijzijnde. Zo blijft het getal van dag tot dag vergelijkbaar. DVOL is Deribits eigen 30-daagse volatiliteitsindex, de crypto-tegenhanger van de VIX voor aandelen.</dd>
+      <dt>Variance premium · 30d</dt>
+      <dd>Wat de markt vraagt voor volatiliteit, min wat er de afgelopen 30 dagen werkelijk aan beweging was. Zie <a href="#s4">04</a>.</dd>
+      <dt>RR25 · 30d</dt>
+      <dd>Of de markt meer betaalt voor bescherming tegen een daling of voor een inzet op een stijging. Zie <a href="#s3">03</a>.</dd>
+      <dt>Q(BTC &gt; …)</dt>
+      <dd>De kans die uit de optieprijzen volgt dat BTC op die datum boven dat niveau staat. Zie <a href="#s5">05</a>.</dd>
+    </dl>
+    <p style="margin-top:16px">De pijltjes (▲ ▼) onder de tegels tonen de verandering sinds de vorige dag; na een week verschijnt er ook een mini-grafiekje van het verloop. Het label linksboven zegt hoe oud de gegevens zijn. Wordt het oranje (<em>stale</em>), dan is de dagelijkse update mislukt en kijk je naar oudere cijfers. De andere vinkjes zijn controles op het model, zie <a href="#s6">06</a>.</p>
+  </section>
+
+  <section id="s1">
+    <h2><span class="n">01</span>Het volatiliteitsoppervlak</h2>
+    <p>Eén IV-getal is niet genoeg: elke combinatie van strike en looptijd heeft zijn eigen IV. Zet je ze allemaal naast elkaar, dan krijg je een oppervlak, en de vorm van dat oppervlak is de eigenlijke informatie.</p>
+    <h3>De heatmap lezen</h3>
+    <ul class="plain">
+      <li><strong>Rijen</strong> zijn vervaldatums: bovenaan opties die morgen aflopen, onderaan die van volgend jaar.</li>
+      <li><strong>Kolommen</strong> zeggen hoe ver de strike van de huidige prijs ligt. Het midden (ATM) is de huidige prijs; links liggen lagere strikes, rechts hogere.</li>
+      <li><strong>Kleur</strong> is de IV: hoe donkerder, hoe duurder de onzekerheid.</li>
+      <li><strong>Gedimde cellen</strong>: daar worden geen opties genoteerd. Het oppervlak is daar doorgetrokken door het model en dus geen marktprijs.</li>
+    </ul>
+    <p>De as heet <em>log-moneyness</em>, <code>k = ln(K/F)</code>: de natuurlijke logaritme van strike gedeeld door forward. Nul is ATM, <code>k = −0,25</code> is een strike zo'n 22% onder de prijs en <code>+0,25</code> zo'n 28% erboven. Op die schaal liggen een stijging en een daling van dezelfde omvang even ver van het midden.</p>
+    <h3>De smile</h3>
+    <p>Onder de heatmap staat per vervaldatum de <em>smile</em>: de IV van elke strike, met de marktprijzen als punten en een vloeiende lijn erdoor. Die lijn is een SVI-fit, een model met vijf parameters dat een gladde, arbitragevrije curve door de marktpunten legt. Het verschil tussen punt en lijn, het <em>residu</em>, staat eronder in volpunten. Hoe kleiner, hoe beter het model de markt beschrijft.</p>
+    <figure>
+      <div class="legend"><span><i class="dot" style="background:var(--put)"></i>puts</span><span><i class="dot" style="background:var(--call)"></i>calls</span><span><i style="background:var(--accent-mark)"></i>SVI-fit</span></div>
+      <div id="fig-smile"></div>
+      <figcaption id="cap-smile">…</figcaption>
+    </figure>
+    <p>Waarom een glimlach en geen rechte lijn? Een eenvoudig model zou alle strikes dezelfde IV geven. De markt weet beter: grote uitschieters komen vaker voor dan dat model aanneemt, dus opties die alleen bij een grote beweging iets opleveren zijn relatief duur. Links (puts, bescherming tegen een daling) en rechts (calls, een inzet op een stijging) loopt de curve daarom op.</p>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">02</span>Termijnstructuur</h2>
+    <p>Deze grafiek zet de ATM-IV uit tegen de looptijd. De vorm vertelt <em>wanneer</em> de markt onrust verwacht.</p>
+    <ul class="plain">
+      <li><strong>Oplopend</strong>, de normale stand: de korte termijn wordt rustig ingeschat, de lange termijn onzekerder.</li>
+      <li><strong>Dalend of omgekeerd</strong>: de markt verwacht juist nu onrust, bijvoorbeeld rond een aangekondigde gebeurtenis of tijdens een scherpe koersbeweging. Dat is een stresssignaal, en het ebt meestal sneller weg dan het niveau van de volatiliteit.</li>
+    </ul>
+    <p>De tweede lijn is de <em>model-free</em> IV: de eerlijke prijs van variantie, afgeleid uit álle opties van een vervaldatum samen, zoals de VIX en DVOL worden berekend. Ze ligt boven de ATM-IV omdat ook de dure vleugels van de smile meetellen. Het verschil is wat de markt extra rekent voor grote bewegingen.</p>
+    <div class="callout"><div class="lbl">Vandaag</div><p data-f="termtext">…</p></div>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">03</span>Skew: waar is de markt bang voor?</h2>
+    <p>De <em>25-delta</em>-opties liggen redelijk ver uit het geld: grofweg één op vier kans dat ze iets opleveren. Het is een standaardmaat, zodat je verschillende looptijden eerlijk kunt vergelijken.</p>
+    <dl class="terms">
+      <dt>RR25, de risk reversal</dt>
+      <dd>IV van de 25-delta call min IV van de 25-delta put. <strong>Negatief</strong>: bescherming tegen een daling is duurder dan een inzet op een stijging, dus de markt vreest vooral een daling. <strong>Positief</strong>: de markt jaagt op een stijging, wat vooral voorkomt bij een squeeze. <strong>Rond nul</strong>: de markt rekent beide kanten even zwaar.</dd>
+      <dt>BF25, de butterfly</dt>
+      <dd>Het gemiddelde van de twee vleugels min de ATM-IV: de prijs voor een grote beweging, in welke richting dan ook.</dd>
+    </dl>
+    <p style="margin-top:14px">RR25 is een betere angstmeter dan het niveau van de volatiliteit, omdat het een <em>verschil</em> is. Stijgt de volatiliteit overal even hard, bijvoorbeeld in een rally, dan beweegt RR25 niet. Schrikt de markt van een specifiek neerwaarts risico, dan zie je het er meteen in.</p>
+    <div class="callout"><div class="lbl">Vandaag</div><p data-f="skewtext">…</p></div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">04</span>Variantiepremie: de verzekeringspremie</h2>
+    <p>Wie een optie verkoopt, verkoopt eigenlijk een verzekering tegen beweging. Zoals elke verzekeraar vraagt de verkoper doorgaans iets meer dan het risico dat hij verwacht. Die marge heet de <strong>variance risk premium</strong> (VRP): de volatiliteit die de markt vraagt, de model-free IV, min de volatiliteit die er daarna werkelijk komt, de <em>realized</em> volatiliteit.</p>
+    <ul class="plain">
+      <li><strong>Positief</strong>: de verzekering was duurder dan achteraf nodig was, en verkopers verdienden.</li>
+      <li><strong>Negatief</strong>: de markt onderschatte de onrust, en verkopers verloren.</li>
+    </ul>
+    <p>De grafiek met de band laat voor elke dag van het afgelopen jaar zien wat DVOL toen vroeg en wat er de 30 dagen daarna gebeurde. Blauw is premie voor de verkoper, rood is verlies. Het typische patroon is vaak een kleine winst en af en toe een harde klap: zo ziet het rendement van volatiliteit verkopen eruit.</p>
+    <h3>Waarom er een t-waarde bij staat</h3>
+    <p>Realized volatiliteit meten over een paar dagen is onnauwkeurig: vijf dagkoersen zeggen weinig. De t-waarde zegt hoeveel standaardfouten groot de premie is; onder de 2 is ze niet te onderscheiden van toeval. Om dezelfde reden telt de historie minder dan het lijkt. De dagelijkse 30-daagse vensters overlappen elkaar bijna volledig, dus een jaar data levert maar zo'n twaalf onafhankelijke metingen op.</p>
+    <div class="callout"><div class="lbl">Vandaag</div><p data-f="vrptext">…</p></div>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">05</span>Kansverdeling</h2>
+    <p>Uit de prijzen van calls met oplopende strikes kun je een volledige kansverdeling afleiden (Breeden en Litzenberger, 1978). Hoe snel een call goedkoper wordt naarmate de strike stijgt, verraadt hoeveel kans de markt aan elke prijs geeft. Het dashboard doet dat voor elke vervaldatum.</p>
+    <figure>
+      <div id="fig-density"></div>
+      <figcaption id="cap-density">…</figcaption>
+    </figure>
+    <div class="callout"><div class="lbl">Belangrijk</div><p>Dit is een <strong>risico-neutrale</strong> kans: wat de markt ervoor rekent, inclusief de premie voor risico. Het is geen voorspelling van de echte kans. Omdat beleggers extra betalen voor bescherming tegen een crash, overschat deze verdeling meestal de kans op grote dalingen. Lees het als "wat de markt inprijst".</p></div>
+    <p>De verdeling is scheef naar rechts, want de koers kan niet onder nul maar wel onbeperkt stijgen. Dat is rekenkunde, geen optimisme. Waar de markt écht bang voor is, lees je af aan de skew in <a href="#s3">03</a>.</p>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">06</span>Diagnostiek: kun je het vertrouwen?</h2>
+    <p>De groene vinkjes bovenaan het dashboard zijn controles dat het model geen onmogelijke prijzen bevat. Zonder die controles kan de kansverdeling uit <a href="#s5">05</a> onzin zijn.</p>
+    <dl class="terms">
+      <dt>Butterfly-arbitrage</dt><dd>Faalt deze, dan zou de kansverdeling ergens negatief zijn, en een negatieve kans bestaat niet.</dd>
+      <dt>Calendar-arbitrage</dt><dd>Een optie met een langere looptijd mag nooit goedkoper zijn dan dezelfde optie met een kortere. Anders ligt er gratis geld op tafel.</dd>
+      <dt>Wings / 2</dt><dd>De vleugels van de smile mogen niet sneller oplopen dan een wiskundige grens (Roger Lee, 2004). Daarboven zou de verdeling geen eindige spreiding meer hebben.</dd>
+      <dt>RMSE</dt><dd>De gemiddelde afwijking tussen model en markt, in volpunten. Onder de 1 is het model preciezer dan het verschil tussen bied- en laatprijs.</dd>
+      <dt>Martingaal</dt><dd>Het gemiddelde van de kansverdeling moet gelijk zijn aan de forward. Wijkt het meer dan een paar basispunten af, dan klopt de kalibratie niet.</dd>
+    </dl>
+    <p style="margin-top:14px">Haalt een dagelijkse run deze controles niet, dan wordt de site die dag niet bijgewerkt en blijft de vorige versie staan.</p>
+  </section>
+
+  <section id="niet">
+    <h2>Wat dit niet is</h2>
+    <ul class="plain">
+      <li><strong>Geen beleggingsadvies.</strong> Het dashboard beschrijft wat de optiemarkt inprijst, niet wat je moet doen.</li>
+      <li><strong>Geen voorspelling.</strong> Implied volatility en risico-neutrale kansen zijn prijzen, inclusief risicopremie, geen verwachtingen van een orakel.</li>
+      <li><strong>Geen live feed.</strong> Het is één snapshot per dag, kort na de dagelijkse afwikkeling van Deribit om 08:00 UTC (10:00 in de Nederlandse zomertijd).</li>
+    </ul>
+  </section>
+
+  <section id="woorden">
+    <h2>Woordenlijst</h2>
+    <dl class="terms">
+      <dt>Call / put</dt><dd>Het recht om te kopen / verkopen tegen de strike.</dd>
+      <dt>Strike</dt><dd>De afgesproken prijs in een optie.</dd>
+      <dt>Expiry</dt><dd>De vervaldatum. Deribit heeft dagelijkse, wekelijkse, maand- en kwartaalopties, die allemaal om 08:00 UTC afwikkelen.</dd>
+      <dt>Forward</dt><dd>De prijs voor levering op een latere datum.</dd>
+      <dt>ATM, at the money</dt><dd>Een strike ongeveer gelijk aan de huidige prijs.</dd>
+      <dt>Implied volatility (IV)</dt><dd>De jaarlijkse beweeglijkheid die in een optieprijs zit.</dd>
+      <dt>Realized volatility</dt><dd>De beweeglijkheid die er werkelijk was, gemeten aan de dagelijkse koersen.</dd>
+      <dt>Volpunt</dt><dd>Eén procentpunt volatiliteit: van 36% naar 37% is één volpunt.</dd>
+      <dt>Basispunt (bp)</dt><dd>Een honderdste procent.</dd>
+      <dt>Delta</dt><dd>Hoeveel een optie in waarde verandert als BTC één dollar beweegt; ruwweg ook de kans dat de optie iets oplevert.</dd>
+      <dt>DVOL</dt><dd>Deribits 30-daagse volatiliteitsindex voor BTC.</dd>
+      <dt>SVI</dt><dd><em>Stochastic Volatility Inspired</em>, het model dat de smile per vervaldatum beschrijft (Gatheral, 2004).</dd>
+      <dt>Arbitrage</dt><dd>Risicoloze winst door een tegenstrijdigheid in prijzen. Een goed model laat er geen toe.</dd>
+    </dl>
+  </section>
+
+  <footer>Leesgids bij het <a href="index.html">Vol Surface Lab</a>. Data: Deribit public API. Geen beleggingsadvies.</footer>
+</div>
+<script id="facts" type="application/json">__FACTS__</script>
+<script>
+"use strict";
+const F = JSON.parse(document.getElementById('facts').textContent);
+const fin = Number.isFinite;
+const nf = (x, d) => new Intl.NumberFormat('nl-NL', { minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
+const pct = (x, d = 1) => fin(x) ? nf(x * 100, d) + '%' : '—';
+const usd = x => fin(x) ? '$' + nf(Math.round(x), 0) : '—';
+const vp = (x, d = 2) => fin(x) ? (x > 0 ? '+' : x < 0 ? '−' : '') + nf(Math.abs(x), d) : '—';
+const MONTHS = { JAN: 'januari', FEB: 'februari', MAR: 'maart', APR: 'april', MAY: 'mei', JUN: 'juni',
+  JUL: 'juli', AUG: 'augustus', SEP: 'september', OCT: 'oktober', NOV: 'november', DEC: 'december' };
+const expiry = l => { const m = /^(\d{1,2})([A-Z]{3})(\d{2})$/.exec(l); return m ? `${+m[1]} ${MONTHS[m[2]]} 20${m[3]}` : l; };
+const set = (key, text) => document.querySelectorAll(`[data-f="${key}"]`).forEach(n => { n.textContent = text; });
+
+/* ------------------------------------------------ numbers in the prose */
+const c = F.cm, hl = F.headline;
+const move = c.atm30 * Math.sqrt(30 / 365);
+set('date', new Intl.DateTimeFormat('nl-NL', { dateStyle: 'long', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(F.asOfIso)) + ' UTC');
+set('atm30', pct(c.atm30));
+set('move30', pct(move));
+set('move30usd', usd(F.spot * move));
+set('spot', usd(F.spot));
+set('hlp', pct(hl.p));
+set('hllevel', usd(hl.level));
+set('hllabel', expiry(hl.label));
+set('moveformula', `${pct(c.atm30)} × √(30/365) ≈ ${pct(move)}`);
+
+const front = F.term[0], back = F.term[F.term.length - 1];
+const slope = (back.atmIv - front.atmIv) * 100;
+set('termtext',
+  `De ATM-IV loopt van ${pct(front.atmIv)} bij ${nf(front.dte, 1)} dagen naar ${pct(back.atmIv)} bij ${nf(back.dte, 0)} dagen: ` +
+  (slope > 1.5 ? 'oplopend, de normale stand. De markt verwacht op korte termijn relatieve rust.'
+   : slope < -1.5 ? 'omgekeerd. De markt verwacht juist op korte termijn onrust.'
+   : 'vrijwel vlak, zonder duidelijk moment waarop de markt onrust verwacht.') +
+  ` Op 30 dagen ligt de model-free IV ${nf((c.mf30 - c.atm30) * 100, 1)} volpunten boven de ATM-IV: dat is de prijs van de vleugels.`);
+
+set('skewtext',
+  (c.rr30 < -1 ? `RR25 staat op ${vp(c.rr30)} volpunten: puts zijn duurder dan calls, dus de markt betaalt extra voor bescherming tegen een daling.`
+   : c.rr30 > 1 ? `RR25 staat op ${vp(c.rr30)} volpunten: calls zijn duurder dan puts, dus de markt jaagt op een stijging.`
+   : `RR25 staat op ${vp(c.rr30)} volpunten, dicht bij nul: de markt rekent een daling en een stijging vrijwel even zwaar.`) +
+  ` BF25 is ${vp(c.bf30)} volpunten, de extra prijs voor een grote beweging.` +
+  (F.historyDays < 20 ? ` Hoe ongewoon dit is, zegt het dashboard zodra er 20 dagen historie zijn; nu zijn het er ${F.historyDays}.` : ''));
+
+const e = F.expost;
+set('vrptext',
+  `De markt vraagt nu ${pct(c.mf30)} voor de komende 30 dagen, terwijl de afgelopen 30 dagen ${pct(c.rv30)} lieten zien: ` +
+  `een premie van ${vp(c.vrp30)} volpunten (t = ${nf(c.vrpT30, 1)}). ` +
+  (c.vrp30 < 0 ? 'Negatief: de markt verwacht de komende maand rustiger dan de afgelopen maand was. '
+   : 'Positief: de verzekering tegen beweging is duurder dan de recente beweging. ') +
+  (Math.abs(c.vrpT30) < 2 ? 'Met een t onder de 2 is het geen hard signaal.' : 'Met een t boven de 2 is het meer dan toeval.') +
+  (e ? ` Over het afgelopen jaar verdienden verkopers gemiddeld ${vp(e.mean, 1)} volpunten, maar met t = ${nf(e.tStat, 2)} op zo'n ${nf(e.effectiveN, 0)} onafhankelijke vensters is ook dat niet hard te maken.` : ''));
+
+/* ------------------------------------------------------------- charts */
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const x = document.createElementNS(NS, n); for (const k in a) x.setAttribute(k, a[k]); return x; };
+const txt = (s, a) => { const t = el('text', Object.assign({ fill: 'var(--ink-3)', 'font-size': 11,
+  'font-family': '"IBM Plex Mono", ui-monospace, monospace' }, a)); t.textContent = s; return t; };
+const lin = (d0, d1, r0, r1) => v => r0 + (v - d0) / (d1 - d0 || 1) * (r1 - r0);
+const ticks = (lo, hi, n) => {
+  const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+  const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+};
+
+function drawSmile() {
+  const s = F.smile, W = 640, H = 250, x0 = 46, x1 = W - 16, y0 = 18, y1 = H - 36;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Volatiliteitssmile voor ${expiry(s.label)}` });
+  const m = k => (Math.exp(k) - 1) * 100;                     // % from the forward
+  const ivAt = k => { const p = s.params, u = k - p.m; return Math.sqrt(Math.max(p.a + p.b * (p.rho * u + Math.sqrt(u * u + p.sig * p.sig)), 1e-12) / s.T); };
+  const kLo = Math.max(s.kLo, -0.6), kHi = Math.min(s.kHi, 0.5);
+  const pts = s.points.filter(p => p.k >= kLo && p.k <= kHi);
+  const ivs = pts.map(p => p.iv);
+  const lo = Math.min(...ivs) * 0.97, hi = Math.max(...ivs) * 1.03;
+  const xs = lin(m(kLo), m(kHi), x0, x1), ys = lin(lo, hi, y1, y0);
+  for (const t of ticks(lo, hi, 4)) {
+    svg.appendChild(el('line', { x1: x0, x2: x1, y1: ys(t), y2: ys(t), stroke: 'var(--rule)', 'stroke-width': 1 }));
+    svg.appendChild(txt(nf(t * 100, 0) + '%', { x: x0 - 8, y: ys(t) + 4, 'text-anchor': 'end' }));
+  }
+  for (const t of ticks(m(kLo), m(kHi), 5)) svg.appendChild(txt((t > 0 ? '+' : '') + nf(t, 0) + '%', { x: xs(t), y: y1 + 17, 'text-anchor': 'middle' }));
+  svg.appendChild(el('line', { x1: xs(0), x2: xs(0), y1: y0, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+  svg.appendChild(txt('ATM', { x: xs(0) + 5, y: y0 + 10 }));
+  let d = '';
+  for (let i = 0; i <= 120; i++) { const k = kLo + (kHi - kLo) * i / 120; d += `${i ? 'L' : 'M'}${xs(m(k)).toFixed(1)},${ys(ivAt(k)).toFixed(1)}`; }
+  svg.appendChild(el('path', { d, fill: 'none', stroke: 'var(--accent-mark)', 'stroke-width': 2 }));
+  for (const p of pts) svg.appendChild(el('circle', { cx: xs(m(p.k)), cy: ys(p.iv), r: 4,
+    fill: p.type === 'put' ? 'var(--put)' : 'var(--call)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+  svg.appendChild(txt('← bescherming tegen daling', { x: x0 + 6, y: y0 + 10, fill: 'var(--put)' }));
+  svg.appendChild(txt('inzet op stijging →', { x: x1 - 4, y: y0 + 10, 'text-anchor': 'end', fill: 'var(--call)' }));
+  svg.appendChild(txt('strike t.o.v. de huidige prijs', { x: (x0 + x1) / 2, y: H - 3, 'text-anchor': 'middle' }));
+  document.getElementById('fig-smile').appendChild(svg);
+  document.getElementById('cap-smile').textContent =
+    `Smile voor ${expiry(s.label)} (${nf(s.dte, 0)} dagen). Elke stip is een optie, de lijn is het model; ` +
+    `de gemiddelde afwijking is ${nf(s.rmseVol, 2)} volpunten.`;
+}
+
+function drawDensity() {
+  const D = F.density, W = 640, H = 240, x0 = 16, x1 = W - 16, y0 = 22, y1 = H - 36;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Kansverdeling voor ${expiry(D.label)}` });
+  const lo = 0.3 * D.F, hi = 2.2 * D.F;
+  const pts = D.Ks.map((K, i) => ({ K, q: D.q[i] })).filter(p => p.K >= lo && p.K <= hi);
+  const xs = lin(lo, hi, x0, x1), ys = lin(0, Math.max(...pts.map(p => p.q)) * 1.1, y1, y0);
+  const tail = pts.filter(p => p.K >= hl.level);
+  if (tail.length > 1) {
+    const a = tail.map(p => `${xs(p.K).toFixed(1)},${ys(p.q).toFixed(1)}`).join(' ');
+    svg.appendChild(el('polygon', { points: `${xs(tail[0].K).toFixed(1)},${ys(0)} ${a} ${xs(tail[tail.length - 1].K).toFixed(1)},${ys(0)}`,
+      fill: 'var(--accent-mark)', opacity: 0.28 }));
+  }
+  svg.appendChild(el('path', { d: pts.map((p, i) => `${i ? 'L' : 'M'}${xs(p.K).toFixed(1)},${ys(p.q).toFixed(1)}`).join(''),
+    fill: 'none', stroke: 'var(--accent-mark)', 'stroke-width': 2 }));
+  svg.appendChild(el('line', { x1: x0, x2: x1, y1: y1, y2: y1, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+  for (const t of ticks(lo, hi, 5)) if (t > lo && t < hi) svg.appendChild(txt('$' + nf(t / 1000, 0) + 'k', { x: xs(t), y: y1 + 17, 'text-anchor': 'middle' }));
+  svg.appendChild(el('line', { x1: xs(D.F), x2: xs(D.F), y1: y0, y2: y1, stroke: 'var(--ink-3)', 'stroke-width': 1 }));
+  svg.appendChild(txt('forward ' + usd(D.F), { x: xs(D.F) + 5, y: y0 + 4 }));
+  svg.appendChild(el('line', { x1: xs(hl.level), x2: xs(hl.level), y1: y0 + 30, y2: y1, stroke: 'var(--accent)', 'stroke-width': 1 }));
+  svg.appendChild(txt(`${pct(hl.p)} kans boven ${usd(hl.level)}`, { x: xs(hl.level) + 6, y: y0 + 40, fill: 'var(--accent)', 'font-weight': 600 }));
+  svg.appendChild(txt('BTC-prijs op de vervaldatum', { x: (x0 + x1) / 2, y: H - 3, 'text-anchor': 'middle' }));
+  document.getElementById('fig-density').appendChild(svg);
+  document.getElementById('cap-density').textContent =
+    `Kansverdeling voor ${expiry(D.label)} (${nf(D.dte, 0)} dagen), afgeleid uit de optieprijzen. ` +
+    `Het gekleurde deel rechts van ${usd(hl.level)} is ${pct(hl.p)} van het totaal.`;
+}
+
+drawSmile();
+drawDensity();
+</script>
+</body>
+</html>
