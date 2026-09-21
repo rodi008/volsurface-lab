@@ -40,7 +40,10 @@ export function buildSurface(chain) {
 
   for (const label of labels) {
     const all = chain.rows.filter(r => r.expiryLabel === label);
-    const pts = all.filter(o => o.isOtm && o.markBtc >= MIN_TICKS * 1e-4
+    // Expressed against the instrument's own tick in dollars, so the filter
+    // means the same thing for an inverse bitcoin option quoted in coin and a
+    // linear altcoin option quoted in USDC.
+    const pts = all.filter(o => o.isOtm && o.priceUsd >= MIN_TICKS * (o.tickUsd || 1e-4 * o.F)
                              && o.iv > 0.01 && o.iv < 6);
     if (pts.length < MIN_POINTS) continue;
 

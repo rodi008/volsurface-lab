@@ -137,6 +137,18 @@ h1 {
 .ccy.on { background: var(--accent-mark); border-color: var(--accent-mark); color: var(--on-accent); }
 .tile-link { color: var(--accent); text-decoration: none; font-weight: 600; }
 .tile-link:hover { text-decoration: underline; }
+.notable {
+  border-left: 3px solid var(--accent-mark); background: var(--panel);
+  border-radius: 0 4px 4px 0; padding: 14px 18px; margin-bottom: 18px;
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: 15.5px; line-height: 1.6; color: var(--ink-2); max-width: 92ch;
+}
+.notable p { margin: 0 0 0.45em; }
+.notable p:last-child { margin: 0; }
+.notable .lbl {
+  font-family: "IBM Plex Sans", sans-serif; font-size: 10.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 6px;
+}
 footer a { color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
@@ -356,12 +368,20 @@ footer {
 </div>
 
 <div class="wrap">
+  <div class="notable" id="notable"></div>
+
   <div class="tiles" id="tiles"></div>
 
   <div class="panel context-panel" id="context-panel">
     <div class="panel-title">Today against its own year</div>
     <div class="panel-sub">Where the current readings sit in their own twelve-month distribution. A level says little on its own — 34% implied volatility is high for equities and quiet for bitcoin — so the range it comes from is the context.</div>
     <div class="chart" id="context"></div>
+  </div>
+
+  <div class="panel context-panel" id="history-panel">
+    <div class="panel-title">Since this page started measuring</div>
+    <div class="panel-sub">One reading per day, written by the daily run. Each series keeps its own scale: they share a time axis, not a unit.</div>
+    <div class="chart" id="history"></div>
   </div>
 
   <section id="s1">
@@ -428,7 +448,7 @@ footer {
       <div class="chart" id="vrp"></div>
       <div class="tbl-scroll" id="vrp-table"></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="vrpts-panel">
       <div class="panel-title">Ex post, through time</div>
       <div class="panel-sub">DVOL on each date against the variance actually realized over the following 30 days. The shaded band is the premium the variance seller was paid — filled toward the seller when positive, against them when negative.</div>
       <div class="legend" id="vrpts-legend"></div>
@@ -462,6 +482,22 @@ footer {
   <section id="s6">
     <div class="stage-head">
       <span class="stage-num">06</span>
+      <h2>Positioning</h2>
+      <span class="note" id="posnote"></span>
+    </div>
+    <div class="panel">
+      <div class="panel-sub">Open interest by strike: how many contracts are outstanding, and where. Calls above the axis, puts below. This is the one panel that does not come from the fit — it reads the raw chain, in-the-money strikes included.</div>
+      <div class="filters" id="pos-filters"></div>
+      <div class="legend" id="pos-legend"></div>
+      <div class="chart" id="positioning"></div>
+      <div class="tbl-scroll" id="pos-table"></div>
+    </div>
+    <div class="analysis analysis-block" id="a-pos"></div>
+  </section>
+
+  <section id="s7">
+    <div class="stage-head">
+      <span class="stage-num">07</span>
       <h2>Calibration and arbitrage diagnostics</h2>
       <span class="note">every claim above depends on these</span>
     </div>
@@ -696,8 +732,8 @@ function renderTiles() {
   ];
   // The peer asset: the one number on this page that does not come from this
   // page's own chain, and the reason both assets are worth running.
-  if (S.peer && S.peer.cm && fin(S.peer.cm.atm30) && fin(c.atm30)) {
-    const p = S.peer;
+  for (const p of (S.peers || (S.peer ? [S.peer] : []))) {
+    if (!p || !p.cm || !fin(p.cm.atm30) || !fin(c.atm30)) continue;
     tiles.push({
       k: `${p.currency} · 30d implied`,
       v: fmt.pct(p.cm.atm30),
@@ -711,6 +747,73 @@ function renderTiles() {
     `<div class="tile"><div class="k">${esc(t.k)}</div><div class="v">${esc(t.v)}</div>` +
     `<div class="n">${esc(t.n)}</div>${t.d ? `<div class="d">${t.d}</div>` : ''}${spark(t.s)}</div>`
   ).join('');
+}
+
+/* ------------------------------------------------- worth knowing today */
+function renderNotable() {
+  const host = document.getElementById('notable');
+  if (!host) return;
+  const items = (S.notable || []).filter(t => typeof t === 'string');
+  if (!items.length) { host.hidden = true; return; }
+  host.hidden = false;
+  host.innerHTML = '<div class="lbl">Worth knowing today</div>' +
+    items.map(t => `<p>${esc(t)}</p>`).join('');
+}
+
+/* ------------------------------------------------- the record so far */
+function drawHistory() {
+  const host = document.getElementById('history');
+  const panel = document.getElementById('history-panel');
+  if (!host || !panel) return;
+  const rows = (S.history || []).filter(r => r && typeof r.date === 'string')
+    .slice().sort((a, b) => a.date.localeCompare(b.date));
+  // Under a week there is no shape to read, only a couple of dots.
+  if (rows.length < 5) { panel.hidden = true; return; }
+  panel.hidden = false;
+  host.innerHTML = '';
+
+  const cols = [
+    { key: 'atm30', label: '30-day implied vol', f: v => fmt.pct(v, 1), zero: false },
+    { key: 'rr30', label: 'RR25, vol points', f: v => fmt.vp(v, 2), zero: true },
+    { key: 'vrp30', label: 'Variance premium, vol points', f: v => fmt.vp(v, 1), zero: true },
+  ];
+  const W = 1000, H = 200, gap = 34, colW = (W - gap * 2) / 3, top = 28, bot = 34;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': 'Daily readings since this page started measuring' });
+  const g = el('g');
+
+  cols.forEach((c, ci) => {
+    const xOff = ci * (colW + gap);
+    const ok = rows.map((r, i) => ({ i, v: r[c.key] })).filter(p => fin(p.v));
+    if (ok.length < 2) return;
+    let lo = Math.min(...ok.map(p => p.v)), hi = Math.max(...ok.map(p => p.v));
+    if (c.zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    const pad = (hi - lo) * 0.18 || Math.abs(hi || 1) * 0.1;
+    const xs = scale(0, rows.length - 1, xOff + 2, xOff + colW - 54);
+    const ys = scale(lo - pad, hi + pad, H - bot, top);
+
+    g.appendChild(txt(c.label, { x: xOff, y: 11, fill: 'var(--ink-2)', 'font-size': 11.5 }));
+    if (c.zero && ys(0) > top && ys(0) < H - bot) {
+      g.appendChild(el('line', { x1: xOff + 2, x2: xOff + colW - 54, y1: ys(0), y2: ys(0),
+        stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+      g.appendChild(txt('0', { x: xOff - 4, y: ys(0) + 3.5, 'text-anchor': 'end', 'font-size': 9.5 }));
+    }
+    g.appendChild(txt(c.f(hi), { x: xOff - 4, y: ys(hi) + 3.5, 'text-anchor': 'end', 'font-size': 9.5 }));
+    g.appendChild(txt(c.f(lo), { x: xOff - 4, y: ys(lo) + 3.5, 'text-anchor': 'end', 'font-size': 9.5 }));
+
+    const d = ok.map((p, j) => `${j ? 'L' : 'M'}${xs(p.i).toFixed(1)},${ys(p.v).toFixed(1)}`).join('');
+    g.appendChild(el('path', { d, fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    const last = ok[ok.length - 1];
+    g.appendChild(el('circle', { cx: xs(last.i), cy: ys(last.v), r: 4,
+      fill: 'var(--accent-mark)', stroke: 'var(--panel)', 'stroke-width': 2 }));
+    g.appendChild(txt(c.f(last.v), { x: xs(last.i) + 8, y: ys(last.v) + 4,
+      fill: 'var(--ink)', 'font-weight': 600, 'font-size': 12 }));
+  });
+
+  g.appendChild(txt(`${rows[0].date} → ${rows[rows.length - 1].date} · ${rows.length} daily readings`,
+    { x: 0, y: H - 6, 'font-size': 10.5 }));
+  svg.appendChild(g);
+  host.appendChild(svg);
 }
 
 /* --------------------------------------------- today against its year */
@@ -1162,8 +1265,13 @@ function drawVrp() {
 function drawVrpTs() {
   const host = document.getElementById('vrpts');
   host.innerHTML = '';
-  const d = S.vrpSeries.filter(r => fin(r.rvForward) && fin(r.impliedVol));
-  if (d.length < 2) return;
+  const panel = document.getElementById('vrpts-panel');
+  const d = (S.vrpSeries || []).filter(r => fin(r.rvForward) && fin(r.impliedVol));
+  // Deribit publishes a volatility index for bitcoin and ether only, so for
+  // any other asset this panel has nothing to draw and is hidden rather than
+  // left as an empty frame.
+  if (d.length < 2) { if (panel) panel.hidden = true; return; }
+  if (panel) panel.hidden = false;
   const W = 1000, ml = 62, mr = 118, mt = 16, mb = 42, H = 300;
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
     'aria-label': 'DVOL against subsequently realized volatility over time' });
@@ -1410,7 +1518,112 @@ function drawRnd() {
     }));
 }
 
-/* -------------------------------------------------------- 06  diagnostics */
+/* --------------------------------------------------------- 06  positioning */
+let posExpiry = null;
+
+function drawPositioning() {
+  const host = document.getElementById('positioning');
+  const P = S.positioning || [];
+  if (!host) return;
+  if (!P.length) { document.getElementById('s6').hidden = true; return; }
+  document.getElementById('s6').hidden = false;
+
+  if (!posExpiry || !P.some(p => p.label === posExpiry)) {
+    // Default to where the money actually is, not to the nearest expiry.
+    posExpiry = P.reduce((a, b) => (b.callOi + b.putOi > a.callOi + a.putOi ? b : a)).label;
+  }
+  const ff = document.getElementById('pos-filters');
+  ff.innerHTML = '<span class="lbl">Expiry</span>';
+  for (const p of P) {
+    const b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = p.label;
+    b.setAttribute('aria-pressed', String(p.label === posExpiry));
+    b.addEventListener('click', () => { posExpiry = p.label; drawPositioning(); });
+    ff.appendChild(b);
+  }
+
+  const p = P.find(x => x.label === posExpiry);
+  host.innerHTML = '';
+  const W = 1000, ml = 58, mr = 20, mt = 26, mb = 46, H = 320;
+  const x0 = ml, x1 = W - mr, mid = mt + (H - mb - mt) / 2;
+  // Keep the window around the forward: a lone deep strike would otherwise
+  // squeeze every traded strike into a few pixels.
+  const lo = Math.min(...p.strikes.map(s => s.K), p.F * 0.5);
+  const hi = Math.max(...p.strikes.map(s => s.K).filter(K => K <= p.F * 3), p.F * 1.5);
+  const inWin = p.strikes.filter(s => s.K >= lo && s.K <= hi);
+  const maxOi = Math.max(...inWin.map(s => Math.max(s.callOi, s.putOi)), 1);
+  const xs = scale(lo, hi, x0, x1);
+  const ys = v => mid - (v / maxOi) * (mid - mt);          // calls upward
+  const yp = v => mid + (v / maxOi) * ((H - mb) - mid);    // puts downward
+  const bw = Math.max(2, Math.min(10, (x1 - x0) / Math.max(inWin.length, 1) * 0.55));
+
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+    'aria-label': `Open interest by strike for ${p.label}` });
+  const g = el('g');
+  g.appendChild(el('line', { x1: x0, x2: x1, y1: mid, y2: mid, stroke: 'var(--rule-strong)', 'stroke-width': 1 }));
+  for (const t of niceTicks(lo, hi, 6)) {
+    if (t < lo || t > hi) continue;
+    g.appendChild(txt(fmt.usdk(t), { x: xs(t), y: H - mb + 18, 'text-anchor': 'middle', 'font-size': 10 }));
+  }
+  const oiLabel = v => (v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : String(Math.round(v)));
+  g.appendChild(txt('calls ' + oiLabel(maxOi), { x: x0 - 8, y: mt + 4, 'text-anchor': 'end', 'font-size': 10 }));
+  g.appendChild(txt('puts ' + oiLabel(maxOi), { x: x0 - 8, y: H - mb, 'text-anchor': 'end', 'font-size': 10 }));
+
+  const tip = mkTip(host);
+  for (const s of inWin) {
+    const x = xs(s.K) - bw / 2;
+    if (s.callOi > 0) g.appendChild(el('rect', { x, y: ys(s.callOi), width: bw, height: Math.max(mid - ys(s.callOi), 0.5), fill: 'var(--call)', rx: 1 }));
+    if (s.putOi > 0) g.appendChild(el('rect', { x, y: mid, width: bw, height: Math.max(yp(s.putOi) - mid, 0.5), fill: 'var(--put)', rx: 1 }));
+    const hit = el('rect', { x: xs(s.K) - Math.max(bw, 12) / 2, y: mt, width: Math.max(bw, 12), height: H - mb - mt, fill: 'transparent', style: 'cursor:crosshair' });
+    hit.addEventListener('mouseenter', ev => {
+      const b = host.getBoundingClientRect();
+      tip.show(row('strike', fmt.usd(s.K)) + row('call OI', oiLabel(s.callOi)) + row('put OI', oiLabel(s.putOi)) +
+        row('traded today', oiLabel((s.callVol || 0) + (s.putVol || 0))),
+        ev.clientX - b.left, ev.clientY - b.top);
+    });
+    hit.addEventListener('mouseleave', () => tip.hide());
+    g.appendChild(hit);
+  }
+
+  for (const [v, col, label] of [[p.F, 'var(--ink-3)', 'forward'], [p.maxPain, 'var(--accent)', 'max pain']]) {
+    if (!fin(v) || v < lo || v > hi) continue;
+    g.appendChild(el('line', { x1: xs(v), x2: xs(v), y1: mt, y2: H - mb, stroke: col, 'stroke-width': 1.5 }));
+    g.appendChild(txt(`${label} ${fmt.usdk(v)}`, { x: xs(v) + 5, y: mt - 8, fill: col, 'font-weight': 600, 'font-size': 11 }));
+  }
+  svg.appendChild(g);
+  host.appendChild(svg);
+
+  legend(document.getElementById('pos-legend'), [
+    { color: 'var(--call)', label: 'call open interest' },
+    { color: 'var(--put)', label: 'put open interest' },
+    { color: 'var(--ink-3)', label: 'forward' },
+    { color: 'var(--accent)', label: 'max pain' },
+  ]);
+  document.getElementById('posnote').textContent =
+    `${oiLabel(P.reduce((t, x) => t + x.callOi + x.putOi, 0))} contracts outstanding`;
+
+  table(document.getElementById('pos-table'),
+    ['Expiry', 'DTE', 'Forward', 'Call OI', 'Put OI', 'Put/Call', 'Max pain', 'vs forward'],
+    P.map(x => ({
+      sel: x.label === posExpiry,
+      cells: [
+        { v: x.label, cls: 'em' }, x.dte.toFixed(1), fmt.usd(x.F),
+        oiLabel(x.callOi), oiLabel(x.putOi),
+        fin(x.putCallRatio) ? x.putCallRatio.toFixed(2) : '—',
+        fin(x.maxPain) ? fmt.usd(x.maxPain) : '—',
+        fin(x.maxPain) ? fmt.vp((x.maxPain / x.F - 1) * 100, 1) + '%' : '—',
+      ],
+    })));
+
+  const gap = fin(p.maxPain) ? (p.maxPain / p.F - 1) * 100 : null;
+  document.getElementById('a-pos').innerHTML =
+    `<p>${esc(`For ${p.label}, ${oiLabel(p.callOi)} call contracts and ${oiLabel(p.putOi)} put contracts are outstanding, a put/call ratio of ${fin(p.putCallRatio) ? p.putCallRatio.toFixed(2) : '—'}. ` +
+      (gap != null ? `Max pain sits at ${fmt.usd(p.maxPain)}, ${Math.abs(gap).toFixed(1)}% ${gap < 0 ? 'below' : 'above'} the forward.` : ''))}</p>` +
+    `<p>${esc('Max pain is the settlement price at which option holders collectively receive the least. It is arithmetic over open interest, not a forecast: deep in-the-money contracts that will simply be exercised drag it around, and it moves whenever positions do. Read it as where the outstanding book is concentrated, and nothing more.')}</p>`;
+}
+
+/* -------------------------------------------------------- 07  diagnostics */
 function drawDiag() {
   table(document.getElementById('diag-table'),
     ['Expiry', 'DTE', 'Pts', 'Stale', 'Open int.', 'RMSE', 'Core', 'Max', 'min g(k)', 'Butterfly', 'Wing L', 'Wing R', 'Calendar →'],
@@ -1445,6 +1658,7 @@ function renderProse() {
 
 function renderFooter() {
   const v = S.meta.validation;
+  const ccy = String(S.meta.currency || 'BTC').toLowerCase();
   document.getElementById('foot').innerHTML =
     `Deribit public API, no authentication. Black-76 on the per-expiry forward; ` +
     `raw-SVI slices calibrated by the Zeliade quasi-explicit method; model-free implied variance ` +
@@ -1457,13 +1671,15 @@ function renderFooter() {
       : '') +
     `Refreshed daily after Deribit's 08:00 UTC settlement. ` +
     `Regenerate locally with <code>node bin/lab.js update</code>. ` +
-    `A plain-language guide, in Dutch, is at <a href="uitleg.html" lang="nl">uitleg.html</a>.`;
+    `A plain-language guide, in Dutch, is at <a href="uitleg.html" lang="nl">uitleg.html</a>. ` +
+    `The numbers behind this page: <a href="data/${esc(ccy)}.json">${esc(ccy)}.json</a> (today's full snapshot) ` +
+    `and <a href="data/${esc(ccy)}-history.csv">${esc(ccy)}-history.csv</a> (one row per day).`;
 }
 
 /* ------------------------------------------------------------------ boot */
 function renderAll() {
-  renderMasthead(); renderTiles(); drawContext(); buildSmileFilters();
-  drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawCone(); drawRnd(); drawDiag();
+  renderMasthead(); renderNotable(); renderTiles(); drawContext(); drawHistory(); buildSmileFilters();
+  drawHeat(); drawSmile(); drawTerm(); drawSkew(); drawVrp(); drawVrpTs(); drawCone(); drawRnd(); drawPositioning(); drawDiag();
   renderProse(); renderFooter();
 }
 renderAll();

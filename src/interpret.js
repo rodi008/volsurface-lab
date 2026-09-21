@@ -15,10 +15,75 @@ const ordinal = n => {
 const vp = (x, d = 2) => (x >= 0 ? '+' : '') + x.toFixed(d) + ' vol pts';
 const usd = x => '$' + Math.round(x).toLocaleString('en-US');
 
+/**
+ * The two or three things worth knowing before reading anything else.
+ *
+ * Only what sits outside its usual range earns a line, so on an ordinary day
+ * this is short and says so. Every claim is a level the page shows elsewhere;
+ * nothing here is a forecast or a recommendation.
+ */
+export function readNotable({ currency, cm, context, headline, term }) {
+  const out = [];
+
+  if (context && context.impliedVol && Number.isFinite(context.impliedVol.pct)) {
+    const p = Math.round(context.impliedVol.pct * 100);
+    if (p <= 15) {
+      out.push(`30-day implied volatility sits in the ${ordinal(p)} percentile of its own year at ` +
+        `${pct(cm.atm30)}: the market is pricing an unusually quiet month.`);
+    } else if (p >= 85) {
+      out.push(`30-day implied volatility sits in the ${ordinal(p)} percentile of its own year at ` +
+        `${pct(cm.atm30)}: the market is pricing an unusually turbulent month.`);
+    }
+  }
+
+  if (term && term.length > 1) {
+    // Measured from the shortest expiry beyond a few days. At one day to
+    // expiry ATM vol is dominated by the expiry itself and routinely prints
+    // ten points away from the curve, which would report an inversion on an
+    // ordinary day.
+    const front = term.find(r => r.dte >= 5) || term[0];
+    const slope = (term[term.length - 1].atmIv - front.atmIv) * 100;
+    if (slope < -1.5) {
+      out.push(`The term structure is inverted by ${Math.abs(slope).toFixed(1)} vol points — near-dated ` +
+        `options price more volatility than long-dated ones, which is what stress looks like.`);
+    }
+  }
+
+  if (Number.isFinite(cm.rr30)) {
+    if (cm.rr30 <= -3) {
+      out.push(`RR25 is ${vp(cm.rr30)}: downside protection is bid well over upside.`);
+    } else if (cm.rr30 >= 3) {
+      out.push(`RR25 is ${vp(cm.rr30)}, with upside calls bid over downside puts — the ` +
+        `unusual direction for a crypto smile.`);
+    }
+  }
+
+  if (Number.isFinite(cm.vrp30)) {
+    if (cm.vrp30 < 0) {
+      out.push(`The 30-day variance premium is negative at ${vp(cm.vrp30)}: options price ` +
+        `less volatility than the past month actually delivered.`);
+    } else if (Number.isFinite(cm.vrpT30) && cm.vrpT30 >= 2) {
+      out.push(`The 30-day variance premium is ${vp(cm.vrp30)} at t = ${cm.vrpT30.toFixed(1)}, ` +
+        `clear of the sampling noise in the realized leg.`);
+    }
+  }
+
+  if (headline && Number.isFinite(headline.p)) {
+    out.push(`The market prices a ${pct(headline.p)} chance of ${currency} above ${usd(headline.level)} ` +
+      `by ${headline.label}.`);
+  }
+
+  if (!out.length) out.push('Every reading sits inside its usual range today.');
+  return out.slice(0, 3);
+}
+
 export function readTermStructure(surface) {
   const s = surface.slices;
   if (s.length < 2) return [];
-  const front = s[0], back = s[s.length - 1];
+  // The front is the shortest expiry beyond a few days: a one-day option's ATM
+  // vol is an expiry-day artefact rather than a point on the curve.
+  const front = s.find(x => x.dte >= 5) || s[0];
+  const back = s[s.length - 1];
   const out = [];
 
   const slope = (back.atmIv - front.atmIv) * 100;

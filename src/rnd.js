@@ -125,7 +125,11 @@ export function quantile(rnd, p) {
  * forward rather than fixed, so the ladder stays informative when the price
  * moves: a fixed $100k rung reads 100% or 0% after a large enough move.
  */
-export const roundStep = F => (F < 20000 ? 1000 : F < 50000 ? 5000 : F < 200000 ? 10000 : 25000);
+// Round price levels have to scale with the price itself: $25k rungs are
+// meaningless on a $116 underlying, and $10 rungs are noise on bitcoin.
+export const roundStep = F =>
+  F < 5 ? 0.25 : F < 20 ? 1 : F < 50 ? 2.5 : F < 200 ? 10 : F < 1000 ? 50 :
+  F < 5000 ? 250 : F < 20000 ? 1000 : F < 50000 ? 5000 : F < 200000 ? 10000 : 25000;
 
 export function niceLevels(F, extra = []) {
   const step = roundStep(F);

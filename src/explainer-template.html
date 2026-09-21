@@ -121,7 +121,8 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-s
     <a href="#s3"><span class="n">03</span>Skew</a>
     <a href="#s4"><span class="n">04</span>Variantiepremie</a>
     <a href="#s5"><span class="n">05</span>Kansverdeling</a>
-    <a href="#s6"><span class="n">06</span>Diagnostiek</a>
+    <a href="#s6"><span class="n">06</span>Positionering</a>
+    <a href="#s7"><span class="n">07</span>Diagnostiek</a>
     <a href="#niet">Wat dit niet is</a>
     <a href="#woorden">Woordenlijst</a>
   </nav>
@@ -131,7 +132,8 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-s
     <p>Een optie is het recht, maar niet de plicht, om bitcoin op een vaste datum tegen een vaste prijs te kopen (een <em>call</em>) of te verkopen (een <em>put</em>). Die vaste prijs heet de <em>strike</em>, de datum de <em>expiry</em>.</p>
     <p>Wat zo'n recht kost, hangt vooral af van één ding: hoe hard de markt verwacht dat de prijs gaat bewegen. Hoe onrustiger de verwachting, hoe duurder de optie. Alle andere ingrediënten van de prijs zijn bekend, dus je kunt die verwachting terugrekenen uit wat de optie kost. Dat getal heet de <strong>implied volatility</strong> (IV): de beweeglijkheid die de markt in de prijs heeft verwerkt, als percentage per jaar.</p>
     <p>Dit dashboard haalt elke dag alle BTC-opties van Deribit op, de grootste optiebeurs voor crypto, en rekent voor elk contract die IV uit. Samen vertellen ze hoe onrustig de markt het verwacht, waar ze bang voor is, en welke kansen ze inprijst.</p>
-    <p>Er is ook een <a href="eth.html">ETH-versie</a> van het dashboard, met de knopjes BTC en ETH linksboven om te wisselen. Alles wat hieronder staat geldt daar net zo; de getallen in deze uitleg gaan over bitcoin. Ether is doorgaans duidelijk beweeglijker, dus verwacht daar hogere percentages.</p>
+    <p>Er zijn drie dashboards: <a href="index.html">BTC</a>, <a href="eth.html">ETH</a> en <a href="sol.html">SOL</a>, met de knopjes linksboven om te wisselen. Alles wat hieronder staat geldt voor alle drie; de getallen in deze uitleg gaan over bitcoin. Ether en solana zijn doorgaans duidelijk beweeglijker, dus verwacht daar hogere percentages.</p>
+    <p>Twee panelen ontbreken op de SOL-pagina, en dat is geen storing: Deribit publiceert alleen voor BTC en ETH een volatiliteitsindex (DVOL). Zonder die index is er geen jaarhistorie van de verwachte beweeglijkheid, dus vervallen het jaarbereik en de ex-post-premie. Alles wat uit de optieketen zelf komt, werkt wel.</p>
   </section>
 
   <section id="vandaag">
@@ -158,7 +160,8 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-s
       <dt>Q(BTC &gt; …)</dt>
       <dd>De kans die uit de optieprijzen volgt dat BTC op die datum boven dat niveau staat. Zie <a href="#s5">05</a>.</dd>
     </dl>
-    <p style="margin-top:16px">De pijltjes (▲ ▼) onder de tegels tonen de verandering sinds de vorige dag; na een week verschijnt er ook een mini-grafiekje van het verloop. Het label linksboven zegt hoe oud de gegevens zijn. Wordt het oranje (<em>stale</em>), dan is de dagelijkse update mislukt en kijk je naar oudere cijfers. De andere vinkjes zijn controles op het model, zie <a href="#s6">06</a>.</p>
+    <p style="margin-top:16px">De pijltjes (▲ ▼) onder de tegels tonen de verandering sinds de vorige dag; na een week verschijnt er ook een mini-grafiekje van het verloop. Het label linksboven zegt hoe oud de gegevens zijn. Wordt het oranje (<em>stale</em>), dan is de dagelijkse update mislukt en kijk je naar oudere cijfers. De andere vinkjes zijn controles op het model, zie <a href="#s7">07</a>.</p>
+    <p>Helemaal bovenaan staat een kadertje <em>Worth knowing today</em>. Daarin zet de dagelijkse run de twee of drie dingen die vandaag buiten hun gebruikelijke bereik vallen. Is er niets bijzonders, dan zegt het dat ook.</p>
     <h3>Waar staat vandaag in zijn eigen jaar?</h3>
     <p>Onder de tegels staan drie strookjes. Een niveau zegt namelijk weinig op zichzelf: 34% volatiliteit is hoog voor aandelen en rustig voor bitcoin. Elk strookje toont het bereik van het afgelopen jaar, met een streepje op de mediaan en een stip waar vandaag staat. Het percentage erachter zegt hoeveel van het afgelopen jaar lager stond dan nu. Staat de stip rechts, dan is de markt onrustiger dan gebruikelijk; staat hij links, dan is het rustiger dan normaal.</p>
   </section>
@@ -236,7 +239,17 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-s
   </section>
 
   <section id="s6">
-    <h2><span class="n">06</span>Diagnostiek: kun je het vertrouwen?</h2>
+    <h2><span class="n">06</span>Positionering: waar zit de markt?</h2>
+    <p>Alle voorgaande secties gaan over <em>prijzen</em>. Deze gaat over <em>posities</em>. De <strong>open interest</strong> is het aantal contracten dat op dit moment openstaat per strike: hoeveel calls en hoeveel puts er daadwerkelijk in de markt liggen. Calls staan boven de as, puts eronder.</p>
+    <p>Dit is het enige paneel dat niet uit het model komt maar rechtstreeks uit de optieketen, inclusief de strikes die diep in-the-money zijn en die de kalibratie juist negeert. Grote stapels open interest zijn interessant omdat ze de handel eromheen sturen: wie die contracten heeft verkocht, moet zich indekken, en dat indekken beweegt mee met de koers.</p>
+    <h3>Max pain</h3>
+    <p>De verticale lijn met het label <em>max pain</em> is de koers waarbij de houders van alle opties samen het minst uitbetaald krijgen. Je rekent hem uit door voor elke mogelijke slotkoers op te tellen wat alle calls en puts zouden uitkeren, en te kijken waar die som het laagst is.</p>
+    <p>Lees het als een landmerk, niet als een voorspelling. Het is rekenkunde over openstaande posities, en diep in-the-money contracten die toch wel uitgeoefend worden trekken het getal flink opzij. Het verschuift ook zodra posities veranderen. Wat het wél zegt: waar het uitstaande boek zwaar ligt.</p>
+    <p>De verhouding put/call in de tabel is een ruwe stemmingsmeter: meer dan 1 betekent dat er meer puts dan calls openstaan. Voorzichtig daarmee: een put kan net zo goed gekocht zijn als bescherming als verkocht zijn voor premie, en de richting van die handel zie je hier niet.</p>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">07</span>Diagnostiek: kun je het vertrouwen?</h2>
     <p>De groene vinkjes bovenaan het dashboard zijn controles dat het model geen onmogelijke prijzen bevat. Zonder die controles kan de kansverdeling uit <a href="#s5">05</a> onzin zijn.</p>
     <dl class="terms">
       <dt>Butterfly-arbitrage</dt><dd>Faalt deze, dan zou de kansverdeling ergens negatief zijn, en een negatieve kans bestaat niet.</dd>
@@ -276,7 +289,9 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule-s
     </dl>
   </section>
 
-  <footer>Leesgids bij het <a href="index.html">Vol Surface Lab</a>. Data: Deribit public API. Geen beleggingsadvies.</footer>
+  <footer>Leesgids bij het <a href="index.html">Vol Surface Lab</a>. Data: Deribit public API. Geen beleggingsadvies.
+  De cijfers achter de pagina's zijn te downloaden: <a href="data/btc.json">btc.json</a>, <a href="data/eth.json">eth.json</a>, <a href="data/sol.json">sol.json</a>,
+  en per dag één regel in <a href="data/btc-history.csv">btc-history.csv</a>.</footer>
 </div>
 <script id="facts" type="application/json">__FACTS__</script>
 <script>

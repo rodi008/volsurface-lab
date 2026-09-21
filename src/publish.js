@@ -109,6 +109,7 @@ export function dbDocuments(snap) {
       cm: snap.cm,
       headline: snap.headline,
       context: snap.context,
+      notable: snap.notable,
       slices: snap.slices.map(({ points, ...rest }) => rest),
       calendar: snap.calendar,
       skew: snap.skew,
@@ -120,6 +121,7 @@ export function dbDocuments(snap) {
     surface: {
       runId,
       mesh: snap.mesh,
+      positioning: snap.positioning,
       points: Object.fromEntries(snap.slices.map(s => [s.label, s.points])),
     },
     density: { runId, densities: snap.densities },

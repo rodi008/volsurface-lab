@@ -15,13 +15,13 @@ import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { fetchChain, fetchOhlc, fetchDvol } from '../src/deribit.js';
+import { fetchChain, fetchOhlc, fetchDvol, ASSETS } from '../src/deribit.js';
 import { buildSurface, surfaceMesh } from '../src/surface.js';
 import { price, impliedVol } from '../src/black76.js';
 import { skewTermStructure } from '../src/skew.js';
 import { vrpByExpiry, expostVrpSeries, vrpStats, realizedAll, realizedCloseToClose } from '../src/varswap.js';
 import { riskNeutralDensity, densitySummary, probAbove, niceLevels, roundStep } from '../src/rnd.js';
-import { readTermStructure, readSkew, readVrp, readDensity, readDiagnostics } from '../src/interpret.js';
+import { readTermStructure, readSkew, readVrp, readDensity, readDiagnostics, readNotable } from '../src/interpret.js';
 import { cmVol, cmLinear } from '../src/constmat.js';
 import { readHistory, upsertHistory } from '../src/history.js';
 import { roundDeep, healthCheck, dbDocuments } from '../src/publish.js';
@@ -40,6 +40,11 @@ const has = name => argv.includes(`--${name}`);
 const JSON_OUT = has('json');
 let QUIET = has('quiet');
 const CCY = (flag('currency', 'BTC') || 'BTC').toUpperCase();
+
+if (!ASSETS[CCY]) {
+  console.error(`Unknown asset "${CCY}". Known: ${Object.keys(ASSETS).join(', ')}`);
+  process.exit(1);
+}
 
 // One file set per currency. BTC keeps the unsuffixed names it started with,
 // so its history carries on uninterrupted.
@@ -82,7 +87,7 @@ function wrap(s, width) {
 
 async function load({ needHistory = false } = {}) {
   const jobs = [fetchChain(CCY)];
-  if (needHistory) jobs.push(fetchOhlc(400, `${CCY}-PERPETUAL`), fetchDvol(400, CCY));
+  if (needHistory) jobs.push(fetchOhlc(400, ASSETS[CCY].perpetual), fetchDvol(400, ASSETS[CCY].dvol));
   const [chain, ohlc, dvol] = await Promise.all(jobs);
   const surface = buildSurface(chain);
   return { chain, surface, ohlc, dvol };
@@ -121,7 +126,7 @@ function exchangeChecks(chain) {
   let maxTicks = 0, maxTicksName = '', otmIv = 0, otmIvName = '';
   for (const o of chain.rows) {
     const p = price(o.F, o.K, o.T, o.iv, o.r, o.type);
-    const ticks = Math.abs(p - o.priceUsd) / (1e-4 * o.F);
+    const ticks = Math.abs(p - o.priceUsd) / (o.tickUsd || 1e-4 * o.F);
     tickErrs.push(ticks);
     if (ticks > maxTicks) { maxTicks = ticks; maxTicksName = o.name; }
     if (o.isOtm) {
@@ -393,6 +398,38 @@ async function cmdAll({ writeHistory = false } = {}) {
     premium: band(yr.map(r => r.vrpAnteVolPts).filter(Number.isFinite)),
   } : null;
 
+  // Positioning: open interest by strike, from the WHOLE chain rather than the
+  // out-of-the-money points the fit uses, because open interest sits on both
+  // sides of the forward. Max pain is the settlement price at which the least
+  // is paid out to option holders — a positioning landmark, not a forecast,
+  // and it moves as open interest moves.
+  const positioning = surface.slices.map(s => {
+    const byK = new Map();
+    for (const r of ctx.chain.rows) {
+      if (r.expiryLabel !== s.label) continue;
+      if (!byK.has(r.K)) byK.set(r.K, { K: r.K, callOi: 0, putOi: 0, callVol: 0, putVol: 0 });
+      const e = byK.get(r.K);
+      if (r.type === 'call') { e.callOi += r.oi || 0; e.callVol += r.volume || 0; }
+      else { e.putOi += r.oi || 0; e.putVol += r.volume || 0; }
+    }
+    const strikes = [...byK.values()].filter(e => e.callOi + e.putOi > 0).sort((a, b) => a.K - b.K);
+    let maxPain = null, least = Infinity;
+    for (const cand of strikes) {
+      let pain = 0;
+      for (const x of strikes) {
+        pain += Math.max(cand.K - x.K, 0) * x.callOi + Math.max(x.K - cand.K, 0) * x.putOi;
+      }
+      if (pain < least) { least = pain; maxPain = cand.K; }
+    }
+    const callOi = strikes.reduce((t, e) => t + e.callOi, 0);
+    const putOi = strikes.reduce((t, e) => t + e.putOi, 0);
+    return {
+      label: s.label, dte: s.dte, F: s.F, maxPain,
+      callOi, putOi, putCallRatio: callOi > 0 ? putOi / callOi : null,
+      strikes,
+    };
+  }).filter(p => p.strikes.length > 2);
+
   const past = readHistory(HISTORY_FILE).filter(r => r.date < date);
   const rrHistory = past.map(r => r.rr30).filter(Number.isFinite);
   const rmses = surface.slices.map(s => s.rmseVol).sort((a, b) => a - b);
@@ -442,6 +479,8 @@ async function cmdAll({ writeHistory = false } = {}) {
     headline,
     cm,
     context,
+    positioning,
+    notable: readNotable({ currency: CCY, cm, context, headline, term: vrp.rows, positioning }),
     history: [...past, today].slice(-120),
     interpretation: {
       termStructure: readTermStructure(surface),
@@ -486,7 +525,7 @@ async function cmdUpdate() {
   const c = snap.cm, hl = snap.headline;
   console.log(`snapshot ${snap.meta.asOfIso.slice(0, 16)}Z  spot ${Math.round(snap.meta.spot)}`
     + `  ATM30 ${fx(c.atm30 * 100, 1)}%  RR25-30d ${fx(c.rr30)}  VRP30 ${fx(c.vrp30)} (t ${fx(c.vrpT30, 1)})`
-    + (hl ? `  Q(>${hl.level / 1000}k, ${hl.label}) ${fx(hl.p * 100, 1)}%` : ''));
+    + (hl ? `  Q(>${hl.level >= 1000 ? hl.level / 1000 + 'k' : hl.level}, ${hl.label}) ${fx(hl.p * 100, 1)}%` : ''));
   console.log(`dashboard  out/${built.file.split(/[\\/]/).pop()}  ${(built.bytes / 1024).toFixed(0)} KB`);
   for (const s of health.soft) console.log(`  note: ${s}`);
   for (const s of health.hard) console.log(`  FAIL: ${s}`);
@@ -537,6 +576,7 @@ try {
   await fn();
 } catch (e) {
   console.error(`ERROR: ${e && e.message ? e.message : e}`);
+  if (has('debug') && e && e.stack) console.error(e.stack);
   if (cmd === 'update') console.log('HEALTH: FAIL - run aborted before completion; nothing to publish');
   process.exitCode = 1;
 }

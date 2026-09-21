@@ -47,6 +47,10 @@ jobs:
         continue-on-error: true
         run: node bin/lab.js update --currency=ETH
 
+      - name: Fetch, calibrate and gate (SOL)
+        continue-on-error: true
+        run: node bin/lab.js update --currency=SOL
+
       - name: Build site
         run: node bin/site.js
 

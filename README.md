@@ -4,8 +4,11 @@ BTC option analytics on Deribit's public API. No API key, no account, no paid da
 
 **Live:** [BTC](https://rodi008.github.io/volsurface-lab/) ·
 [ETH](https://rodi008.github.io/volsurface-lab/eth.html) ·
+[SOL](https://rodi008.github.io/volsurface-lab/sol.html) ·
 [guide, in Dutch](https://rodi008.github.io/volsurface-lab/uitleg.html) — rebuilt
-daily at 08:40 UTC.
+daily at 08:40 UTC. The data behind the pages is published too:
+[btc.json](https://rodi008.github.io/volsurface-lab/data/btc.json),
+[btc-history.csv](https://rodi008.github.io/volsurface-lab/data/btc-history.csv).
 
 The pipeline is a dependency chain, and the order matters: a risk-neutral density
 read off a slice that violates the butterfly condition is meaningless, so the
@@ -28,6 +31,7 @@ node bin/lab.js rnd         # Breeden-Litzenberger density
 node bin/lab.js all         # everything; writes out/snapshot.json
 node bin/lab.js update      # the unattended daily run (see "Daily update")
 node bin/lab.js update --currency=ETH   # the same run for ether
+node bin/lab.js update --currency=SOL   # and for solana
 node bin/dashboard.js       # renders out/snapshot.json into out/dashboard.html
 node bin/site.js            # builds site/index.html, site/eth.html, site/uitleg.html
 node test/analytic.test.mjs # closed-form checks against Black-Scholes
@@ -150,9 +154,15 @@ Each run starts at 08:40 UTC, after Deribit's 08:00 UTC settlement:
 1. `node bin/lab.js update` fetches, calibrates and runs the health gate for
    bitcoin. On `HEALTH: FAIL` it exits non-zero, the job stops, nothing is
    deployed, the site keeps serving the previous day, and GitHub emails the
-   repository owner. Ether runs next under `--currency=ETH`, marked
-   `continue-on-error`: it is additive, so a bad ether run costs that page for
-   a day rather than taking the bitcoin page down with it.
+   repository owner. Ether and solana run next under `--currency=`, marked
+   `continue-on-error`: they are additive, so a bad run on one of them costs
+   that page for a day rather than taking the bitcoin page down with it.
+
+   Solana options are USDC-settled and linear, quoted in dollars rather than in
+   coin, and they live in Deribit's USDC bucket as `SOL_USDC-…` rather than
+   under their own ticker. Deribit publishes a volatility index for bitcoin and
+   ether only, so the twelve-month context and the ex-post premium panels are
+   absent on the solana page rather than filled with something invented.
 2. `node bin/site.js` wraps each asset's dashboard into `site/index.html` and
    `site/eth.html` and builds the guide. Each page is handed the other asset's
    readings, which a single pipeline run cannot know.
